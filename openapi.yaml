@@ -1,0 +1,322 @@
+openapi: 3.0.3
+info:
+  title: OCFL Procurement Pre-Submission Portal API
+  version: 0.1.0
+  description: |
+    Demo API for the Orange County FL procurement pre-submission portal.
+    Upload a vendor quote, extract key fields, validate missing items,
+    prefill the Piggyback Requisition Checklist, and upload a COI.
+servers:
+  - url: http://localhost:5002
+    description: Local demo server
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  font_embedded:
+                    type: boolean
+  /api/upload:
+    post:
+      summary: Upload a vendor quote and create a submission
+      operationId: uploadQuote
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                department:
+                  type: string
+                requestor_name:
+                  type: string
+                requestor_phone:
+                  type: string
+                requisition_number:
+                  type: string
+      responses:
+        '201':
+          description: Submission created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+  /api/validate:
+    post:
+      summary: Re-run validation for a submission
+      operationId: validateSubmission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [submission_id]
+              properties:
+                submission_id:
+                  type: string
+      responses:
+        '200':
+          description: Validation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResponse'
+  /api/forms/piggyback/prefill:
+    get:
+      summary: Get prefilled Piggyback Checklist values for a submission
+      operationId: getPiggybackPrefill
+      parameters:
+        - in: query
+          name: submission_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prefill values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PiggybackPrefillResponse'
+  /api/forms/piggyback/save:
+    post:
+      summary: Save the edited Piggyback Checklist and generate a filled PDF
+      operationId: savePiggyback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [submission_id, fields]
+              properties:
+                submission_id:
+                  type: string
+                fields:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Checklist saved and PDF generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PiggybackSaveResponse'
+  /api/attachments/coi:
+    post:
+      summary: Upload a Certificate of Insurance for a submission
+      operationId: uploadCoi
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [submission_id, file]
+              properties:
+                submission_id:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: COI uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  submission_id:
+                    type: string
+                  coi_uploaded:
+                    type: boolean
+                  filename:
+                    type: string
+  /api/download/piggyback/{submission_id}:
+    get:
+      summary: Download the generated Piggyback Checklist PDF
+      operationId: downloadPiggyback
+      parameters:
+        - in: path
+          name: submission_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Generated PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+  /api/admin/rules:
+    get:
+      summary: List current demo validation rules
+      operationId: listRules
+      responses:
+        '200':
+          description: Rules list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Rule'
+components:
+  schemas:
+    UploadResponse:
+      type: object
+      properties:
+        submission_id:
+          type: string
+        manifest:
+          $ref: '#/components/schemas/Manifest'
+        validation:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        links:
+          type: object
+          properties:
+            prefill_piggyback:
+              type: string
+            validate:
+              type: string
+    ValidationResponse:
+      type: object
+      properties:
+        submission_id:
+          type: string
+        status:
+          type: string
+          enum: [pass, fail]
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+    PiggybackPrefillResponse:
+      type: object
+      properties:
+        submission_id:
+          type: string
+        form:
+          type: string
+          example: Piggyback Requisition Checklist
+        confidence:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [high, medium, low]
+        evidence:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Evidence'
+        fields:
+          type: object
+          additionalProperties: true
+    PiggybackSaveResponse:
+      type: object
+      properties:
+        submission_id:
+          type: string
+        saved:
+          type: boolean
+        pdf_url:
+          type: string
+        validation:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+    Manifest:
+      type: object
+      properties:
+        vendor_name:
+          type: string
+          nullable: true
+        requisition_number:
+          type: string
+          nullable: true
+        contract_number:
+          type: string
+          nullable: true
+        date_submitted:
+          type: string
+          nullable: true
+        requestor_name:
+          type: string
+          nullable: true
+        requestor_phone:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        line_items:
+          type: array
+          items:
+            type: object
+            properties:
+              raw:
+                type: string
+              page:
+                type: integer
+        confidence:
+          type: object
+          additionalProperties:
+            type: string
+    Issue:
+      type: object
+      properties:
+        rule_id:
+          type: string
+        severity:
+          type: string
+          enum: [critical, warning, info]
+        message:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+    Evidence:
+      type: object
+      properties:
+        source:
+          type: string
+        page:
+          type: integer
+          nullable: true
+        snippet:
+          type: string
+          nullable: true
+    Rule:
+      type: object
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+        description:
+          type: string
