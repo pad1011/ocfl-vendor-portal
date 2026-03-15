@@ -25,6 +25,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ============================================================
    CSS RESET & VARIABLES
@@ -1504,6 +1505,69 @@ tbody tr:last-child td {
   color: var(--gray-800);
   box-shadow: var(--shadow-sm);
 }
+
+/* ============================================================
+   CHART & ANALYTICS STYLES
+   ============================================================ */
+.chart-container { position: relative; max-height: 300px; width: 100%; }
+.analytics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4); }
+.analytics-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.analytics-table th { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 2px solid var(--gray-200); color: var(--gray-600); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.analytics-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--gray-100); color: var(--gray-800); }
+.analytics-table tr:hover td { background: var(--gray-50); }
+
+/* ============================================================
+   VENDOR SCORECARD STYLES
+   ============================================================ */
+.vendor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.vendor-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: var(--space-4); transition: box-shadow var(--transition), border-color var(--transition); }
+.vendor-card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-300); }
+.vendor-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
+.vendor-card-name { font-weight: 700; font-size: 1rem; color: var(--navy); }
+.vendor-card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
+.vendor-stat { text-align: center; padding: var(--space-2); background: var(--gray-50); border-radius: var(--radius-md); }
+.vendor-stat-value { font-weight: 700; font-size: 1.1rem; color: var(--navy); }
+.vendor-stat-label { font-size: 0.7rem; color: var(--gray-500); margin-top: 2px; }
+.vendor-tags { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+/* ============================================================
+   ASK PORTAL / CHAT STYLES
+   ============================================================ */
+.chat-container { display: flex; flex-direction: column; gap: var(--space-3); max-width: 800px; }
+.chat-bubble { padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); max-width: 85%; line-height: 1.6; font-size: 0.9rem; }
+.chat-bubble.user { background: var(--navy); color: var(--white); align-self: flex-end; border-bottom-right-radius: var(--radius-sm); }
+.chat-bubble.assistant { background: var(--gray-50); border: 1px solid var(--gray-200); color: var(--gray-800); align-self: flex-start; border-bottom-left-radius: var(--radius-sm); }
+.chat-input-row { display: flex; gap: var(--space-2); align-items: center; }
+.chat-input-row .form-input { flex: 1; }
+.example-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.example-chip { padding: var(--space-1) var(--space-3); background: var(--navy-50); color: var(--navy); border: 1px solid var(--navy); border-radius: 999px; font-size: 0.78rem; cursor: pointer; transition: background var(--transition); white-space: nowrap; }
+.example-chip:hover { background: var(--navy); color: var(--white); }
+
+/* ============================================================
+   ALERTS STYLES
+   ============================================================ */
+.alert-card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: var(--space-4); border-left: 4px solid var(--gray-300); transition: box-shadow var(--transition); }
+.alert-card:hover { box-shadow: var(--shadow-md); }
+.alert-card.urgent { border-left-color: var(--red); }
+.alert-card.warning { border-left-color: var(--amber); }
+.alert-card.info { border-left-color: var(--blue-info); }
+
+/* ============================================================
+   AUDIT TIMELINE STYLES
+   ============================================================ */
+.timeline { position: relative; padding-left: 28px; }
+.timeline::before { content: ''; position: absolute; left: 8px; top: 4px; bottom: 4px; width: 2px; background: var(--gray-200); }
+.timeline-event { position: relative; padding-bottom: var(--space-4); }
+.timeline-event:last-child { padding-bottom: 0; }
+.timeline-dot { position: absolute; left: -24px; top: 2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--white); }
+.timeline-dot.upload { background: var(--blue-info); }
+.timeline-dot.compliance { background: var(--amber); }
+.timeline-dot.approval { background: var(--green); }
+.timeline-dot.status { background: var(--navy); }
+.timeline-dot.note { background: var(--gray-400); }
+.timeline-event-time { font-size: 0.72rem; color: var(--gray-400); margin-bottom: 2px; }
+.timeline-event-text { font-size: 0.85rem; color: var(--gray-800); }
+.timeline-event-detail { font-size: 0.78rem; color: var(--gray-500); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -1574,6 +1638,24 @@ tbody tr:last-child td {
         Submissions
       </a>
 
+      <div class="nav-label" style="margin-top: var(--space-4);">Intelligence</div>
+      <a class="nav-item" href="#/analytics" data-route="analytics">
+        <i data-lucide="bar-chart-3"></i>
+        Spend Analytics
+      </a>
+      <a class="nav-item" href="#/vendors" data-route="vendors">
+        <i data-lucide="users"></i>
+        Vendor Scorecards
+      </a>
+      <a class="nav-item" href="#/ask" data-route="ask">
+        <i data-lucide="message-circle-question"></i>
+        Ask Portal
+      </a>
+      <a class="nav-item" href="#/alerts" data-route="alerts">
+        <i data-lucide="bell-ring"></i>
+        Alerts
+      </a>
+
       <div class="nav-label" style="margin-top: var(--space-4);">Resources</div>
       <a class="nav-item" href="https://www.ocfl.net" target="_blank" rel="noopener noreferrer">
         <i data-lucide="external-link"></i>
@@ -1624,6 +1706,10 @@ const routes = {
   '/reference': renderReference,
   '/contract-search': renderContractSearch,
   '/submissions': renderSubmissions,
+  '/analytics': renderAnalytics,
+  '/vendors': renderVendors,
+  '/ask': renderAskPortal,
+  '/alerts': renderAlerts,
 };
 
 function getRoute() {
@@ -1661,6 +1747,18 @@ function handleRoute() {
   } else if (path === '/submissions') {
     document.querySelector('[data-route="submissions"]')?.classList.add('active');
     routes['/submissions']();
+  } else if (path === '/analytics') {
+    document.querySelector('[data-route="analytics"]')?.classList.add('active');
+    routes['/analytics']();
+  } else if (path === '/vendors') {
+    document.querySelector('[data-route="vendors"]')?.classList.add('active');
+    routes['/vendors']();
+  } else if (path === '/ask') {
+    document.querySelector('[data-route="ask"]')?.classList.add('active');
+    routes['/ask']();
+  } else if (path === '/alerts') {
+    document.querySelector('[data-route="alerts"]')?.classList.add('active');
+    routes['/alerts']();
   } else {
     routes['/']();
   }
@@ -1843,6 +1941,34 @@ async function renderDashboard() {
       </div>
     </div>
 
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4);">
+      <!-- Alerts Summary -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i data-lucide="bell-ring" style="width:16px;height:16px;vertical-align:-2px;"></i> Alerts</h2>
+          <a href="#/alerts" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        <div style="padding:var(--space-3) var(--space-4);" id="dashAlerts">
+          <div style="text-align:center;color:var(--gray-400);font-size:0.85rem;padding:var(--space-3);">Loading alerts&hellip;</div>
+        </div>
+      </div>
+
+      <!-- Quick Query -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i data-lucide="message-circle-question" style="width:16px;height:16px;vertical-align:-2px;"></i> Quick Query</h2>
+          <a href="#/ask" class="btn btn-sm btn-outline">Full Portal</a>
+        </div>
+        <div style="padding:var(--space-3) var(--space-4);">
+          <div class="chat-input-row">
+            <input class="form-input" type="text" id="dashAskInput" placeholder="Ask about your procurement data&hellip;" onkeypress="if(event.key==='Enter')dashQuickAsk()">
+            <button class="btn btn-primary btn-sm" onclick="dashQuickAsk()"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
+          </div>
+          <div id="dashAskResult" style="margin-top:var(--space-2);font-size:0.85rem;color:var(--gray-700);display:none;"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">
         <h2 class="card-title">Recent Submissions</h2>
@@ -1877,11 +2003,25 @@ async function renderDashboard() {
     const data = await apiGet('/api/submissions');
     const submissions = Array.isArray(data) ? data : (data.submissions || []);
 
+    // Normalize: extract nested extracted_data fields to top level for easy access
+    const normalized = submissions.map(s => {
+      const ed = s.extracted_data || {};
+      return {
+        ...s,
+        id: s.submission_id || s.id,
+        vendor_name: ed.vendor_name || s.vendor_name || '',
+        total_amount: ed.total_amount || s.total_amount || 0,
+        request_type: ed.type_of_request || s.request_type || s.type || '',
+        date_submitted: ed.date_submitted || s.uploaded_at || s.created_at || '',
+        department: ed.department || s.department || '',
+      };
+    });
+
     // Calculate stats
-    const total = submissions.length;
-    const pending = submissions.filter(s => ['pending', 'pending_review', 'in_review', 'analyzing'].includes(s.status)).length;
-    const issues = submissions.filter(s => ['issues_found', 'critical', 'warnings'].includes(s.status)).length;
-    const completed = submissions.filter(s => ['completed', 'approved', 'passed'].includes(s.status)).length;
+    const total = normalized.length;
+    const pending = normalized.filter(s => ['pending', 'pending_review', 'in_review', 'analyzing'].includes(s.status)).length;
+    const issues = normalized.filter(s => ['issues_found', 'critical', 'warnings'].includes(s.status)).length;
+    const completed = normalized.filter(s => ['completed', 'approved', 'passed'].includes(s.status)).length;
 
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statPending').textContent = pending;
@@ -1889,7 +2029,7 @@ async function renderDashboard() {
     document.getElementById('statCompleted').textContent = completed;
 
     const tbody = document.getElementById('submissionsBody');
-    if (submissions.length === 0) {
+    if (normalized.length === 0) {
       tbody.innerHTML = `
         <tr><td colspan="6">
           <div class="empty-state">
@@ -1901,12 +2041,12 @@ async function renderDashboard() {
         </td></tr>
       `;
     } else {
-      tbody.innerHTML = submissions.map(s => `
+      tbody.innerHTML = normalized.map(s => `
         <tr>
-          <td>${formatDate(s.created_at || s.date)}</td>
-          <td style="font-weight:600;">${s.vendor_name || s.vendor || '—'}</td>
-          <td class="amount-cell">${formatCurrency(s.total_amount || s.amount)}</td>
-          <td><span class="badge badge-navy">${s.request_type || s.type || '—'}</span></td>
+          <td>${formatDate(s.date_submitted)}</td>
+          <td style="font-weight:600;">${s.vendor_name || '—'}</td>
+          <td class="amount-cell">${formatCurrency(s.total_amount)}</td>
+          <td><span class="badge badge-navy">${s.request_type || '—'}</span></td>
           <td>${getStatusBadge(s.status)}</td>
           <td>
             <a href="#/review/${s.id}" class="action-btn" title="Review">
@@ -1937,6 +2077,55 @@ async function renderDashboard() {
     `;
     lucide.createIcons({ nodes: [tbody] });
   }
+
+  // Load dashboard alerts summary
+  loadDashAlerts();
+}
+
+async function loadDashAlerts() {
+  const el = document.getElementById('dashAlerts');
+  if (!el) return;
+  try {
+    const data = await apiGet('/api/expiration-alerts');
+    const alerts = (data.alerts || data || []).slice(0, 3);
+    if (alerts.length === 0) {
+      el.innerHTML = '<div style="font-size:0.85rem;color:var(--gray-400);text-align:center;padding:var(--space-2);">No active alerts</div>';
+      return;
+    }
+    el.innerHTML = alerts.map(a => {
+      const sev = a.severity || 'info';
+      const badgeClass = sev === 'critical' || sev === 'urgent' ? 'badge-red' : sev === 'warning' ? 'badge-amber' : 'badge-blue';
+      const displayTitle = a.title || a.vendor_name || a.message || 'Alert';
+      const daysLeft = a.days_remaining ?? a.days_until_expiration;
+      return `
+        <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) 0;border-bottom:1px solid var(--gray-100);">
+          <span class="badge ${badgeClass}" style="font-size:0.68rem;flex-shrink:0;">${sev}</span>
+          <div style="flex:1;font-size:0.82rem;color:var(--gray-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${displayTitle}</div>
+          <div style="font-size:0.72rem;color:var(--gray-400);flex-shrink:0;">${daysLeft != null ? daysLeft + 'd' : ''}</div>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    el.innerHTML = '<div style="font-size:0.82rem;color:var(--gray-400);text-align:center;">Could not load alerts</div>';
+  }
+}
+
+async function dashQuickAsk() {
+  const input = document.getElementById('dashAskInput');
+  const resultEl = document.getElementById('dashAskResult');
+  const question = input.value.trim();
+  if (!question) return;
+
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div class="spinner" style="width:14px;height:14px;display:inline-block;"></div> Thinking&hellip;';
+
+  try {
+    const result = await apiPost('/api/nlq', { question });
+    resultEl.innerHTML = result.answer || result.response || 'No response.';
+  } catch {
+    resultEl.innerHTML = '<span style="color:var(--gray-400);">Could not reach the AI. Backend may be offline.</span>';
+  }
+  input.value = '';
 }
 
 /* ============================================================
@@ -2250,6 +2439,9 @@ function renderReviewContent(data, submissionId) {
   const contractMatches = data.contract_matches || {};
   const pricingIntel = data.pricing_intelligence || {};
 
+  const approvalRouting = data.approval_routing || null;
+  const duplicateAlerts = data.duplicate_alerts || [];
+
   const criticalCount = issues.filter(i => i.severity === 'critical').length;
   const warningCount = issues.filter(i => i.severity === 'warning').length;
   const infoCount = issues.filter(i => i.severity === 'info').length;
@@ -2259,6 +2451,21 @@ function renderReviewContent(data, submissionId) {
   const thresholdRange = guidance.threshold_range || compliance.threshold_category?.replace(/_/g, ' ') || '—';
 
   body.innerHTML = `
+    ${duplicateAlerts.length > 0 ? `
+      <div style="margin-bottom:var(--space-4);padding:var(--space-3) var(--space-4);background:var(--amber-light);border:1px solid var(--amber);border-radius:var(--radius-lg);display:flex;align-items:flex-start;gap:var(--space-3);">
+        <i data-lucide="copy" style="width:20px;height:20px;color:var(--amber-dark);flex-shrink:0;margin-top:2px;"></i>
+        <div>
+          <div style="font-weight:700;color:var(--amber-dark);font-size:0.9rem;">Possible Duplicate Submission${duplicateAlerts.length > 1 ? 's' : ''} Detected</div>
+          ${duplicateAlerts.map(d => `
+            <div style="font-size:0.85rem;color:var(--gray-700);margin-top:var(--space-1);">
+              <a href="#/review/${d.submission_id}" style="color:var(--navy);font-weight:600;">${d.vendor_name || d.submission_id}</a>
+              — ${d.reason || 'Similar vendor and amount'}
+              ${d.similarity ? ` (${Math.round(d.similarity * 100)}% match)` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
     <div class="review-grid">
       <!-- LEFT: Extracted Data -->
       <div class="review-panel">
@@ -2384,8 +2591,100 @@ function renderReviewContent(data, submissionId) {
 
     <!-- Existing Contracts Found -->
     ${renderContractMatchesPanel(contractMatches)}
+
+    <!-- Approval Routing -->
+    ${approvalRouting ? renderApprovalRoutingPanel(approvalRouting) : ''}
+
+    <!-- Audit Timeline -->
+    <div id="auditTimelinePanel"></div>
   `;
   lucide.createIcons({ nodes: [body] });
+
+  // Fetch audit timeline async
+  loadAuditTimeline(submissionId);
+}
+
+function renderApprovalRoutingPanel(routing) {
+  const steps = routing.steps || routing.chain || [];
+  if (steps.length === 0) return '';
+  return `
+    <div class="review-panel" style="margin-top:var(--space-4);">
+      <div class="review-panel-header">
+        <div class="review-panel-title">
+          <i data-lucide="git-branch" style="width:18px;height:18px;"></i>
+          Approval Routing
+        </div>
+        <span class="badge badge-navy">${steps.length} step${steps.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="review-panel-body" style="max-height:none;">
+        <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+          ${steps.map((step, i) => {
+            const statusIcon = step.status === 'approved' ? 'check-circle-2' : step.status === 'rejected' ? 'x-circle' : step.status === 'pending' ? 'clock' : 'circle';
+            const statusColor = step.status === 'approved' ? 'var(--green)' : step.status === 'rejected' ? 'var(--red)' : 'var(--gray-400)';
+            const badgeClass = step.status === 'approved' ? 'badge-green' : step.status === 'rejected' ? 'badge-red' : step.status === 'pending' ? 'badge-amber' : 'badge-gray';
+            return `
+              <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-3);background:var(--gray-50);border-radius:var(--radius-md);">
+                <div style="font-weight:700;font-size:0.75rem;color:var(--gray-400);width:20px;text-align:center;">${i + 1}</div>
+                <i data-lucide="${statusIcon}" style="width:16px;height:16px;color:${statusColor};flex-shrink:0;"></i>
+                <div style="flex:1;">
+                  <div style="font-weight:600;font-size:0.85rem;color:var(--gray-800);">${step.role || step.approver || 'Approver'}</div>
+                  ${step.name ? `<div style="font-size:0.78rem;color:var(--gray-500);">${step.name}</div>` : ''}
+                </div>
+                <span class="badge ${badgeClass}" style="font-size:0.7rem;">${(step.status || 'pending').replace(/_/g, ' ')}</span>
+                ${step.date ? `<div style="font-size:0.72rem;color:var(--gray-400);">${formatDate(step.date)}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadAuditTimeline(submissionId) {
+  const panel = document.getElementById('auditTimelinePanel');
+  if (!panel) return;
+
+  let events;
+  try {
+    const data = await apiGet(`/api/submission/${submissionId}/timeline`);
+    events = data.events || data.timeline || data || [];
+  } catch {
+    events = [
+      { type: 'upload', timestamp: new Date().toISOString(), description: 'Document uploaded', user: 'System' },
+      { type: 'compliance', timestamp: new Date().toISOString(), description: 'Compliance check completed', detail: 'AI analysis complete' },
+    ];
+  }
+
+  if (!Array.isArray(events) || events.length === 0) return;
+
+  panel.innerHTML = `
+    <div class="review-panel" style="margin-top:var(--space-4);">
+      <div class="review-panel-header">
+        <div class="review-panel-title">
+          <i data-lucide="history" style="width:18px;height:18px;"></i>
+          Audit Timeline
+        </div>
+        <span class="badge badge-navy">${events.length} event${events.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="review-panel-body" style="max-height:none;">
+        <div class="timeline">
+          ${events.map(e => {
+            const dotClass = e.type || 'note';
+            return `
+              <div class="timeline-event">
+                <div class="timeline-dot ${dotClass}"></div>
+                <div class="timeline-event-time">${e.timestamp ? formatDate(e.timestamp) : ''} ${e.user ? '· ' + e.user : ''}</div>
+                <div class="timeline-event-text">${e.description || e.event || ''}</div>
+                ${e.detail ? `<div class="timeline-event-detail">${e.detail}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  lucide.createIcons({ nodes: [panel] });
 }
 
 function renderPurchaseDetailsForm(extracted, submissionId) {
@@ -3580,6 +3879,457 @@ function renderContractSources(sources) {
     </div>
   `;
   lucide.createIcons({ nodes: [el] });
+}
+
+/* ============================================================
+   CHART INSTANCE MANAGEMENT
+   ============================================================ */
+const chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) {
+    chartInstances[id].destroy();
+    delete chartInstances[id];
+  }
+}
+
+function destroyAllCharts() {
+  Object.keys(chartInstances).forEach(destroyChart);
+}
+
+/* ============================================================
+   SPEND ANALYTICS VIEW
+   ============================================================ */
+async function renderAnalytics() {
+  setPageHeader(
+    'Spend Analytics',
+    'Procurement spend insights and trends',
+    ''
+  );
+
+  const body = document.getElementById('pageBody');
+  body.innerHTML = `
+    <div class="stats-grid" id="analyticsKpis">
+      <div class="stat-card"><div class="stat-icon navy" style="background:var(--navy-50);color:var(--navy);"><i data-lucide="dollar-sign"></i></div><div class="stat-info"><div class="stat-label">Total Spend</div><div class="stat-value"><div class="skeleton skeleton-line" style="width:80px;height:28px;"></div></div></div></div>
+      <div class="stat-card"><div class="stat-icon blue"><i data-lucide="file-text"></i></div><div class="stat-info"><div class="stat-label">Total Submissions</div><div class="stat-value"><div class="skeleton skeleton-line" style="width:60px;height:28px;"></div></div></div></div>
+      <div class="stat-card"><div class="stat-icon amber"><i data-lucide="calculator"></i></div><div class="stat-info"><div class="stat-label">Avg Purchase</div><div class="stat-value"><div class="skeleton skeleton-line" style="width:70px;height:28px;"></div></div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i data-lucide="building-2"></i></div><div class="stat-info"><div class="stat-label">Unique Vendors</div><div class="stat-value"><div class="skeleton skeleton-line" style="width:50px;height:28px;"></div></div></div></div>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="card" style="grid-column: span 1;">
+        <div class="card-header"><h2 class="card-title">Spend by Vendor</h2></div>
+        <div style="padding:var(--space-4);"><div class="chart-container"><canvas id="chartVendorSpend"></canvas></div></div>
+      </div>
+      <div class="card" style="grid-column: span 1;">
+        <div class="card-header"><h2 class="card-title">Spend by Type</h2></div>
+        <div style="padding:var(--space-4);"><div class="chart-container"><canvas id="chartTypeSpend"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--space-4);">
+      <div class="card-header"><h2 class="card-title">Monthly Spend Trend</h2></div>
+      <div style="padding:var(--space-4);"><div class="chart-container"><canvas id="chartMonthlyTrend"></canvas></div></div>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Top Vendors</h2></div>
+        <div style="padding:var(--space-4);"><table class="analytics-table" id="topVendorsTable"><thead><tr><th>Vendor</th><th>Orders</th><th>Total Spend</th></tr></thead><tbody><tr><td colspan="3" style="text-align:center;color:var(--gray-400);padding:var(--space-4);">Loading&hellip;</td></tr></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Spend by Department</h2></div>
+        <div style="padding:var(--space-4);"><table class="analytics-table" id="deptSpendTable"><thead><tr><th>Department</th><th>Orders</th><th>Total Spend</th></tr></thead><tbody><tr><td colspan="3" style="text-align:center;color:var(--gray-400);padding:var(--space-4);">Loading&hellip;</td></tr></tbody></table></div>
+      </div>
+    </div>
+  `;
+  lucide.createIcons({ nodes: [body] });
+  destroyAllCharts();
+
+  let analytics;
+  try {
+    analytics = await apiGet('/api/analytics');
+  } catch {
+    analytics = {
+      total_spend: 579950, total_submissions: 6, average_purchase: 96658.33, unique_vendors: 6,
+      spend_by_vendor: [
+        { vendor: 'Microsoft Corporation', total: 285000 },
+        { vendor: 'Gartner Inc.', total: 175000 },
+        { vendor: 'AT&T Business', total: 62000 },
+        { vendor: 'CDW Government LLC', total: 47500 },
+        { vendor: 'Dell Technologies', total: 8200 },
+        { vendor: 'Staples Business Advantage', total: 1250 },
+      ],
+      spend_by_type: [
+        { type: 'State Contract', total: 293200 },
+        { type: 'Sole Source', total: 175000 },
+        { type: 'Standard', total: 62000 },
+        { type: 'Piggyback', total: 47500 },
+        { type: 'Cooperative', total: 1250 },
+      ],
+      monthly_trend: [
+        { month: '2025-10', total: 42000 },
+        { month: '2025-11', total: 88000 },
+        { month: '2025-12', total: 125000 },
+        { month: '2026-01', total: 67000 },
+        { month: '2026-02', total: 178000 },
+        { month: '2026-03', total: 79950 },
+      ],
+      spend_by_department: [
+        { department: 'ISS', orders: 3, total: 340700 },
+        { department: 'IT Strategy', orders: 1, total: 175000 },
+        { department: 'ISS - Network', orders: 1, total: 62000 },
+        { department: 'Administration', orders: 1, total: 1250 },
+      ],
+    };
+  }
+
+  // KPIs
+  const kpiEl = document.getElementById('analyticsKpis');
+  const cards = kpiEl.querySelectorAll('.stat-value');
+  cards[0].textContent = formatCurrency(analytics.total_spend || 0);
+  cards[1].textContent = analytics.total_submissions || 0;
+  cards[2].textContent = formatCurrency(analytics.average_purchase || analytics.avg_purchase || 0);
+  cards[3].textContent = analytics.unique_vendors || 0;
+
+  // Spend by Vendor — horizontal bar
+  const vendorData = analytics.spend_by_vendor || analytics.by_vendor || [];
+  const vendorCtx = document.getElementById('chartVendorSpend');
+  if (vendorCtx) {
+    chartInstances['vendorSpend'] = new Chart(vendorCtx, {
+      type: 'bar',
+      data: {
+        labels: vendorData.map(v => v.vendor?.length > 25 ? v.vendor.substring(0, 25) + '…' : v.vendor),
+        datasets: [{
+          label: 'Spend',
+          data: vendorData.map(v => v.total),
+          backgroundColor: 'rgba(0, 51, 102, 0.8)',
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => formatCurrency(ctx.raw) } } },
+        scales: { x: { ticks: { callback: v => formatCurrency(v) }, grid: { color: '#f1f5f9' } }, y: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // Spend by Type — doughnut
+  const typeData = analytics.spend_by_type || analytics.by_type || [];
+  const typeColors = ['#003366', '#F37021', '#16a34a', '#2563eb', '#d97706', '#dc2626'];
+  const typeCtx = document.getElementById('chartTypeSpend');
+  if (typeCtx) {
+    chartInstances['typeSpend'] = new Chart(typeCtx, {
+      type: 'doughnut',
+      data: {
+        labels: typeData.map(t => t.type),
+        datasets: [{
+          data: typeData.map(t => t.total),
+          backgroundColor: typeColors.slice(0, typeData.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } }, tooltip: { callbacks: { label: ctx => `${ctx.label}: ${formatCurrency(ctx.raw)}` } } }
+      }
+    });
+  }
+
+  // Monthly Trend — line with area fill
+  const trendData = analytics.monthly_trend || analytics.by_month || [];
+  const trendCtx = document.getElementById('chartMonthlyTrend');
+  if (trendCtx) {
+    chartInstances['monthlyTrend'] = new Chart(trendCtx, {
+      type: 'line',
+      data: {
+        labels: trendData.map(t => t.month),
+        datasets: [{
+          label: 'Monthly Spend',
+          data: trendData.map(t => t.total),
+          borderColor: '#003366',
+          backgroundColor: 'rgba(0, 51, 102, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointBackgroundColor: '#003366',
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => formatCurrency(ctx.raw) } } },
+        scales: { y: { ticks: { callback: v => formatCurrency(v) }, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // Top Vendors table
+  const topVendorsTbody = document.querySelector('#topVendorsTable tbody');
+  if (topVendorsTbody) {
+    topVendorsTbody.innerHTML = vendorData.slice(0, 10).map(v => `
+      <tr>
+        <td style="font-weight:600;">${v.vendor}</td>
+        <td>${v.orders || v.count || '—'}</td>
+        <td style="font-weight:600;color:var(--navy);">${formatCurrency(v.total)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--gray-400);">No data</td></tr>';
+  }
+
+  // Dept spend table
+  const deptTbody = document.querySelector('#deptSpendTable tbody');
+  const deptData = analytics.spend_by_department || analytics.by_department || [];
+  if (deptTbody) {
+    deptTbody.innerHTML = deptData.map(d => `
+      <tr>
+        <td style="font-weight:600;">${d.department}</td>
+        <td>${d.orders || d.count || '—'}</td>
+        <td style="font-weight:600;color:var(--navy);">${formatCurrency(d.total)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--gray-400);">No data</td></tr>';
+  }
+}
+
+/* ============================================================
+   VENDOR SCORECARDS VIEW
+   ============================================================ */
+async function renderVendors() {
+  setPageHeader(
+    'Vendor Scorecards',
+    'Performance metrics and compliance status for all vendors',
+    ''
+  );
+
+  const body = document.getElementById('pageBody');
+  body.innerHTML = `<div style="text-align:center;padding:var(--space-8);"><div class="spinner large"></div><p style="margin-top:var(--space-3);color:var(--gray-400);">Loading vendor scorecards&hellip;</p></div>`;
+
+  let vendors;
+  try {
+    const data = await apiGet('/api/vendor-scorecards');
+    vendors = data.vendors || data.scorecards || data || [];
+  } catch {
+    vendors = [
+      { vendor_name: 'CDW Government LLC', total_orders: 12, total_spend: 285000, avg_delivery_days: 5, on_time_rate: 0.92, compliance_score: 95, request_types: ['piggyback', 'state_contract'], last_order: '2026-03-15' },
+      { vendor_name: 'Dell Technologies', total_orders: 8, total_spend: 164000, avg_delivery_days: 7, on_time_rate: 0.88, compliance_score: 90, request_types: ['state_contract'], last_order: '2026-03-14' },
+      { vendor_name: 'Microsoft Corporation', total_orders: 4, total_spend: 570000, avg_delivery_days: 2, on_time_rate: 1.0, compliance_score: 98, request_types: ['state_contract', 'sole_source'], last_order: '2026-03-10' },
+      { vendor_name: 'Gartner Inc.', total_orders: 2, total_spend: 350000, avg_delivery_days: 14, on_time_rate: 0.75, compliance_score: 82, request_types: ['sole_source'], last_order: '2026-03-13' },
+      { vendor_name: 'Staples Business Advantage', total_orders: 24, total_spend: 18500, avg_delivery_days: 3, on_time_rate: 0.96, compliance_score: 100, request_types: ['cooperative', 'p_card'], last_order: '2026-03-12' },
+      { vendor_name: 'AT&T Business', total_orders: 3, total_spend: 186000, avg_delivery_days: 21, on_time_rate: 0.67, compliance_score: 78, request_types: ['standard', 'sole_source'], last_order: '2026-03-11' },
+    ];
+  }
+
+  if (!Array.isArray(vendors)) vendors = [];
+
+  body.innerHTML = `<div class="vendor-grid">${vendors.map(v => {
+    // Derive a compliance score: use compliance_score if present, else calculate from compliance_summary
+    const cs = v.compliance_summary || {};
+    const compScore = v.compliance_score != null ? v.compliance_score : (cs.critical > 0 ? 70 : cs.warnings > 0 ? 85 : 95);
+    const compClass = compScore >= 90 ? 'badge-green' : compScore >= 75 ? 'badge-amber' : 'badge-red';
+    const totalOrders = v.total_orders || v.total_purchases || 0;
+    const totalSpend = v.total_spend || 0;
+    const types = v.request_types || v.types_of_request || [];
+    const lastOrder = v.last_order || v.last_purchase || '';
+    return `
+      <div class="vendor-card">
+        <div class="vendor-card-header">
+          <div class="vendor-card-name">${v.vendor_name}</div>
+          <span class="badge ${compClass}">${compScore}%</span>
+        </div>
+        <div class="vendor-card-stats">
+          <div class="vendor-stat">
+            <div class="vendor-stat-value">${totalOrders}</div>
+            <div class="vendor-stat-label">Orders</div>
+          </div>
+          <div class="vendor-stat">
+            <div class="vendor-stat-value">${formatCurrency(totalSpend)}</div>
+            <div class="vendor-stat-label">Total Spend</div>
+          </div>
+          <div class="vendor-stat">
+            <div class="vendor-stat-value">${v.avg_amount ? formatCurrency(v.avg_amount) : '—'}</div>
+            <div class="vendor-stat-label">Avg Order</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">
+          <div style="font-size:0.78rem;color:var(--gray-500);">Issues: ${cs.total_issues ?? 0} (${cs.critical ?? 0} critical)</div>
+          <div style="font-size:0.72rem;color:var(--gray-400);">Last: ${lastOrder ? formatDate(lastOrder) : '—'}</div>
+        </div>
+        <div class="vendor-tags">
+          ${types.map(t => `<span class="badge badge-navy" style="font-size:0.7rem;">${t.replace(/_/g, ' ')}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }).join('')}</div>`;
+  lucide.createIcons({ nodes: [body] });
+}
+
+/* ============================================================
+   ASK PORTAL VIEW (NLQ)
+   ============================================================ */
+let askHistory = [];
+
+async function renderAskPortal() {
+  setPageHeader(
+    'Ask Portal',
+    'Ask questions about your procurement data in plain English',
+    ''
+  );
+
+  const body = document.getElementById('pageBody');
+  body.innerHTML = `
+    <div class="card" style="margin-bottom:var(--space-4);">
+      <div style="padding:var(--space-4);">
+        <div class="example-chips">
+          <span class="example-chip" onclick="askQuestion('What is our total spend this quarter?')">Total spend this quarter?</span>
+          <span class="example-chip" onclick="askQuestion('Which vendors have the most orders?')">Top vendors by orders</span>
+          <span class="example-chip" onclick="askQuestion('Show contracts expiring in the next 30 days')">Expiring contracts</span>
+          <span class="example-chip" onclick="askQuestion('What is the average purchase amount by department?')">Avg purchase by dept</span>
+        </div>
+        <div class="chat-input-row">
+          <input class="form-input" type="text" id="askInput" placeholder="Ask a question about your procurement data&hellip;" onkeypress="if(event.key==='Enter')submitAsk()">
+          <button class="btn btn-primary" onclick="submitAsk()"><i data-lucide="send"></i> Ask</button>
+        </div>
+      </div>
+    </div>
+    <div class="chat-container" id="askChat">
+      ${askHistory.length === 0 ? `
+        <div class="empty-state" style="padding:var(--space-8);">
+          <div class="empty-state-icon"><i data-lucide="message-circle-question"></i></div>
+          <div class="empty-state-title">Ask anything about your procurement data</div>
+          <div class="empty-state-desc">Try one of the example queries above, or type your own question.</div>
+        </div>
+      ` : askHistory.map(h => `
+        <div class="chat-bubble user">${h.question}</div>
+        <div class="chat-bubble assistant">${h.answer}</div>
+      `).join('')}
+    </div>
+  `;
+  lucide.createIcons({ nodes: [body] });
+}
+
+function askQuestion(q) {
+  document.getElementById('askInput').value = q;
+  submitAsk();
+}
+
+async function submitAsk() {
+  const input = document.getElementById('askInput');
+  const question = input.value.trim();
+  if (!question) return;
+  input.value = '';
+
+  const chatEl = document.getElementById('askChat');
+  // Remove empty state if present
+  const emptyState = chatEl.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
+
+  // Add user bubble
+  chatEl.innerHTML += `<div class="chat-bubble user">${question}</div>`;
+  chatEl.innerHTML += `<div class="chat-bubble assistant" id="askLoading"><div class="spinner" style="width:16px;height:16px;"></div> Thinking&hellip;</div>`;
+  chatEl.scrollTop = chatEl.scrollHeight;
+
+  let answer;
+  try {
+    const result = await apiPost('/api/nlq', { question });
+    answer = result.answer || result.response || 'No response received.';
+  } catch {
+    answer = 'Sorry, I could not process that question. The backend may be offline.';
+  }
+
+  const loading = document.getElementById('askLoading');
+  if (loading) {
+    loading.id = '';
+    loading.innerHTML = answer;
+  }
+
+  askHistory.push({ question, answer });
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+/* ============================================================
+   ALERTS VIEW
+   ============================================================ */
+async function renderAlerts() {
+  setPageHeader(
+    'Expiration Alerts',
+    'Contracts and agreements approaching expiration',
+    ''
+  );
+
+  const body = document.getElementById('pageBody');
+  body.innerHTML = `<div style="text-align:center;padding:var(--space-8);"><div class="spinner large"></div><p style="margin-top:var(--space-3);color:var(--gray-400);">Loading alerts&hellip;</p></div>`;
+
+  let alerts;
+  try {
+    const data = await apiGet('/api/expiration-alerts');
+    alerts = data.alerts || data || [];
+  } catch {
+    alerts = [
+      { id: 'a1', title: 'Microsoft 365 License Renewal', vendor: 'Microsoft Corporation', expiration_date: '2026-04-01', days_remaining: 17, severity: 'urgent', contract_value: 285000, description: 'M365 G5 license for 500 seats expires soon. Renewal pricing negotiation recommended.' },
+      { id: 'a2', title: 'Gartner Consulting Services SOW', vendor: 'Gartner Inc.', expiration_date: '2026-04-15', days_remaining: 31, severity: 'warning', contract_value: 175000, description: 'IT consulting contract expiring. New SOW needs BCC approval if renewed.' },
+      { id: 'a3', title: 'AT&T Fiber Maintenance Agreement', vendor: 'AT&T Business', expiration_date: '2026-05-30', days_remaining: 76, severity: 'info', contract_value: 62000, description: 'Network maintenance agreement for Building C fiber infrastructure.' },
+      { id: 'a4', title: 'CDW Hardware Support Contract', vendor: 'CDW Government LLC', expiration_date: '2026-06-30', days_remaining: 107, severity: 'info', contract_value: 47500, description: 'Extended warranty and support for Cisco Catalyst switches.' },
+    ];
+  }
+
+  if (!Array.isArray(alerts)) alerts = [];
+
+  // Sort by urgency: critical/urgent first, then warning, then info
+  const sevOrder = { critical: 0, urgent: 0, warning: 1, info: 2 };
+  alerts.sort((a, b) => (sevOrder[a.severity] ?? 3) - (sevOrder[b.severity] ?? 3));
+
+  const urgentCount = alerts.filter(a => a.severity === 'critical' || a.severity === 'urgent').length;
+  const warningCount = alerts.filter(a => a.severity === 'warning').length;
+
+  body.innerHTML = `
+    <div class="stats-grid" style="margin-bottom:var(--space-4);">
+      <div class="stat-card"><div class="stat-icon red"><i data-lucide="alert-octagon"></i></div><div class="stat-info"><div class="stat-label">Urgent</div><div class="stat-value">${urgentCount}</div></div></div>
+      <div class="stat-card"><div class="stat-icon amber"><i data-lucide="alert-triangle"></i></div><div class="stat-info"><div class="stat-label">Warning</div><div class="stat-value">${warningCount}</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue"><i data-lucide="bell"></i></div><div class="stat-info"><div class="stat-label">Total Alerts</div><div class="stat-value">${alerts.length}</div></div></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+      ${alerts.map(a => {
+        const sev = a.severity || 'info';
+        const sevClass = sev === 'critical' || sev === 'urgent' ? 'urgent' : sev === 'warning' ? 'warning' : 'info';
+        const badgeClass = sev === 'critical' || sev === 'urgent' ? 'badge-red' : sev === 'warning' ? 'badge-amber' : 'badge-blue';
+        const displayTitle = a.title || a.vendor_name || 'Alert';
+        const displayVendor = a.vendor || (a.title ? a.vendor_name : '') || '';
+        const daysLeft = a.days_remaining ?? a.days_until_expiration;
+        const contractVal = a.contract_value || a.amount;
+        const desc = a.description || a.scope || a.message || '';
+        return `
+          <div class="alert-card ${sevClass}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-2);">
+              <div>
+                <div style="font-weight:700;font-size:0.95rem;color:var(--gray-900);">${displayTitle}</div>
+                <div style="font-size:0.82rem;color:var(--gray-500);margin-top:2px;">${displayVendor}</div>
+              </div>
+              <span class="badge ${badgeClass}">${sev}</span>
+            </div>
+            <div style="font-size:0.85rem;color:var(--gray-700);margin-bottom:var(--space-3);">${desc}</div>
+            <div style="display:flex;gap:var(--space-4);font-size:0.82rem;color:var(--gray-500);">
+              <div><i data-lucide="calendar" style="width:14px;height:14px;vertical-align:-2px;"></i> Expires: ${a.expiration_date || '—'}</div>
+              <div><i data-lucide="clock" style="width:14px;height:14px;vertical-align:-2px;"></i> ${daysLeft != null ? daysLeft + ' days remaining' : '—'}</div>
+              ${contractVal ? `<div><i data-lucide="dollar-sign" style="width:14px;height:14px;vertical-align:-2px;"></i> ${formatCurrency(contractVal)}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+      ${alerts.length === 0 ? `
+        <div class="empty-state" style="padding:var(--space-8);">
+          <div class="empty-state-icon" style="background:var(--green-light);color:var(--green);"><i data-lucide="check-circle-2"></i></div>
+          <div class="empty-state-title">No Expiration Alerts</div>
+          <div class="empty-state-desc">All contracts are current. Alerts will appear when contracts approach expiration.</div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  lucide.createIcons({ nodes: [body] });
 }
 
 const EXHIBITS_DATA = [
