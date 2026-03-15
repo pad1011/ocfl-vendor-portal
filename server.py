@@ -21,6 +21,9 @@ import pdfplumber
 import uvicorn
 import httpx
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -68,6 +71,7 @@ FILLED_DIR.mkdir(exist_ok=True)
 # ---------------------------------------------------------------------------
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 LLM_MODEL = os.environ.get("LLM_MODEL", "llama3.1:70b")
+SAM_API_KEY = os.environ.get("SAM_API_KEY", "")
 
 # ---------------------------------------------------------------------------
 # JSON file "database"
@@ -146,6 +150,11 @@ class GenerateFormRequest(BaseModel):
     submission_id: str
     form_type: str = "piggyback_checklist"
     field_overrides: dict[str, Any] = Field(default_factory=dict)
+
+
+class ContractSearchRequest(BaseModel):
+    query: str
+    search_type: str = "vendor"  # "vendor" or "product"
 
 
 # ---------------------------------------------------------------------------
@@ -679,6 +688,431 @@ def run_compliance_checks(data: ExtractedData) -> ComplianceResult:
 
 
 # ---------------------------------------------------------------------------
+# Required Forms Determination
+# ---------------------------------------------------------------------------
+
+
+def determine_required_forms(
+    data: ExtractedData, funding_type: str = "", request_type: str = ""
+) -> list[dict]:
+    """Determine which OCFL procurement forms/exhibits are required.
+
+    Returns a list of dicts with: exhibit_number, title, status, reason.
+    Status is one of: "required", "recommended", "not_needed".
+    """
+    amount = data.total_amount
+    ft = funding_type or data.funding_type or "standard"
+    ct = request_type or data.contract_type or "standard"
+    is_federal = ft == "federal"
+    forms: list[dict] = []
+
+    # --- Exhibit 1: Emergency Procurement Justification ---
+    if ct == "emergency":
+        forms.append({
+            "exhibit_number": "Exhibit 1",
+            "title": "Emergency Procurement Justification",
+            "status": "required",
+            "reason": "Emergency procurement requires signed justification from division manager.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 1",
+            "title": "Emergency Procurement Justification",
+            "status": "not_needed",
+            "reason": "Not an emergency procurement.",
+        })
+
+    # --- Exhibit 2: Sole Source Procurement Data Sheet ---
+    if ct == "sole_source":
+        forms.append({
+            "exhibit_number": "Exhibit 2",
+            "title": "Sole Source Procurement Data Sheet",
+            "status": "required",
+            "reason": "Sole source procurement requires justification data sheet.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 2",
+            "title": "Sole Source Procurement Data Sheet",
+            "status": "not_needed",
+            "reason": "Not a sole source procurement.",
+        })
+
+    # --- Exhibit 3: Price Negotiation Memorandum ---
+    if ct == "sole_source":
+        forms.append({
+            "exhibit_number": "Exhibit 3",
+            "title": "Price Negotiation Memorandum",
+            "status": "required",
+            "reason": "Sole source requires price negotiation documentation.",
+        })
+    elif is_federal and amount > 10_000:
+        forms.append({
+            "exhibit_number": "Exhibit 3",
+            "title": "Price Negotiation Memorandum",
+            "status": "recommended",
+            "reason": "Federal procurement over $10K may require profit negotiation memo if no price competition.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 3",
+            "title": "Price Negotiation Memorandum",
+            "status": "not_needed",
+            "reason": "Price negotiation memo not required for this procurement type.",
+        })
+
+    # --- Exhibit 5: Construction Project Information ---
+    scope_lower = (data.scope_of_services or "").lower()
+    is_construction = any(kw in scope_lower for kw in ["construct", "building", "renovation", "demolition"])
+    if is_construction:
+        forms.append({
+            "exhibit_number": "Exhibit 5",
+            "title": "Construction Project Information Sheet",
+            "status": "required" if amount > 10_000 else "recommended",
+            "reason": "Construction-related scope detected. Project information sheet needed.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 5",
+            "title": "Construction Project Information Sheet",
+            "status": "not_needed",
+            "reason": "No construction scope detected.",
+        })
+
+    # --- Exhibit 6: RFP Project Information Sheet ---
+    if amount > 150_000 and not is_federal:
+        forms.append({
+            "exhibit_number": "Exhibit 6",
+            "title": "RFP Project Information Sheet",
+            "status": "recommended",
+            "reason": f"Amount ${amount:,.2f} exceeds $150K — formal solicitation likely requires project info.",
+        })
+    elif is_federal and amount > 250_000:
+        forms.append({
+            "exhibit_number": "Exhibit 6",
+            "title": "RFP Project Information Sheet",
+            "status": "recommended",
+            "reason": f"Federal amount ${amount:,.2f} exceeds $250K — formal solicitation likely.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 6",
+            "title": "RFP Project Information Sheet",
+            "status": "not_needed",
+            "reason": "Amount below formal solicitation threshold.",
+        })
+
+    # --- Exhibit 30: Exemption from Competition ---
+    if ct in ("sole_source", "emergency"):
+        forms.append({
+            "exhibit_number": "Exhibit 30",
+            "title": "Exemption from Competition",
+            "status": "recommended",
+            "reason": f"{ct.replace('_', ' ').title()} may require exemption documentation.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 30",
+            "title": "Exemption from Competition",
+            "status": "not_needed",
+            "reason": "Competitive procurement — exemption not needed.",
+        })
+
+    # --- Exhibit 31: ACS Approval Form ---
+    if ct in ("piggyback", "cooperative", "state_contract", "gsa"):
+        forms.append({
+            "exhibit_number": "Exhibit 31",
+            "title": "Alternate Contract Source (ACS) Approval Form",
+            "status": "required",
+            "reason": "ACS/piggyback/cooperative procurement requires ACS approval.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 31",
+            "title": "Alternate Contract Source (ACS) Approval Form",
+            "status": "not_needed",
+            "reason": "Not using an alternate contract source.",
+        })
+
+    # --- Exhibit 32: Piggyback Requisition Checklist ---
+    if ct == "piggyback":
+        forms.append({
+            "exhibit_number": "Exhibit 32",
+            "title": "Piggyback Requisition Checklist",
+            "status": "required",
+            "reason": "Piggyback procurement requires the requisition checklist.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 32",
+            "title": "Piggyback Requisition Checklist",
+            "status": "not_needed",
+            "reason": "Not a piggyback procurement.",
+        })
+
+    # --- Exhibit 33: Short Form RFQ ---
+    if 10_000 < amount <= 150_000 and ct == "standard" and not is_federal:
+        forms.append({
+            "exhibit_number": "Exhibit 33",
+            "title": "Short Form Request for Quotations (RFQ)",
+            "status": "recommended",
+            "reason": f"Amount ${amount:,.2f} is in $10K-$150K range — short form RFQ encouraged.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 33",
+            "title": "Short Form Request for Quotations (RFQ)",
+            "status": "not_needed",
+            "reason": "Short form RFQ not applicable for this procurement type/amount.",
+        })
+
+    # --- Exhibit 34: Project Information Sheet ---
+    if amount > 150_000:
+        forms.append({
+            "exhibit_number": "Exhibit 34",
+            "title": "Project Information Sheet",
+            "status": "required",
+            "reason": f"Amount ${amount:,.2f} exceeds $150K — project information sheet required for formal solicitation.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 34",
+            "title": "Project Information Sheet",
+            "status": "not_needed",
+            "reason": "Amount below $150K formal solicitation threshold.",
+        })
+
+    # --- Exhibit 35: Independent Cost Estimate ---
+    if is_federal and amount > 250_000:
+        forms.append({
+            "exhibit_number": "Exhibit 35",
+            "title": "Independent Cost Estimate",
+            "status": "required",
+            "reason": "Federal procurement over $250K requires independent cost estimate.",
+        })
+    elif amount > 150_000:
+        forms.append({
+            "exhibit_number": "Exhibit 35",
+            "title": "Independent Cost Estimate",
+            "status": "recommended",
+            "reason": "Formal solicitation — independent cost estimate recommended.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 35",
+            "title": "Independent Cost Estimate",
+            "status": "not_needed",
+            "reason": "Not required at this procurement level.",
+        })
+
+    # --- Exhibit 36: Federal Compliance Documentation ---
+    if is_federal:
+        forms.append({
+            "exhibit_number": "Exhibit 36",
+            "title": "Federal Compliance Documentation Form",
+            "status": "required",
+            "reason": "Federal funding detected — federal compliance documentation mandatory.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 36",
+            "title": "Federal Compliance Documentation Form",
+            "status": "not_needed",
+            "reason": "Not federally funded.",
+        })
+
+    # --- Exhibit 40: Dept Expediting Form with M/WBE ---
+    if not is_federal and 10_000 < amount <= 100_000 and ct in ("standard", "piggyback", "cooperative"):
+        forms.append({
+            "exhibit_number": "Exhibit 40",
+            "title": "Department/Division Expedited Quoting Form (M/WBE)",
+            "status": "required",
+            "reason": f"Amount ${amount:,.2f} is $10K-$100K range with department quoting — Exhibit 40 mandatory.",
+        })
+    else:
+        status = "not_needed"
+        reason = "Not in the $10K-$100K department quoting range or not applicable."
+        if is_federal and 10_000 < amount <= 100_000:
+            reason = "Exhibit 40 is county-funded only — disallowed for grants."
+        forms.append({
+            "exhibit_number": "Exhibit 40",
+            "title": "Department/Division Expedited Quoting Form (M/WBE)",
+            "status": status,
+            "reason": reason,
+        })
+
+    # --- Exhibit 41: Direct Award M/WBE ---
+    if ct == "standard" and amount <= 10_000:
+        forms.append({
+            "exhibit_number": "Exhibit 41",
+            "title": "Direct Award M/WBE Certification",
+            "status": "recommended",
+            "reason": "Small purchase under $10K — consider direct award to M/WBE vendor.",
+        })
+    else:
+        forms.append({
+            "exhibit_number": "Exhibit 41",
+            "title": "Direct Award M/WBE Certification",
+            "status": "not_needed",
+            "reason": "Direct award M/WBE not applicable at this amount/type.",
+        })
+
+    # Sort: required first, then recommended, then not_needed
+    status_order = {"required": 0, "recommended": 1, "not_needed": 2}
+    forms.sort(key=lambda f: status_order.get(f["status"], 3))
+
+    return forms
+
+
+# ---------------------------------------------------------------------------
+# Contract Search
+# ---------------------------------------------------------------------------
+
+DIRECT_SEARCH_LINKS = [
+    {
+        "source": "NASPO ValuePoint",
+        "url_template": "https://www.naspovaluepoint.org/portfolio/?search={query}",
+        "has_api": False,
+    },
+    {
+        "source": "FL State Term (FACTS)",
+        "url_template": "https://vendor.myfloridamarketplace.com/search/bids/detail/{query}",
+        "has_api": False,
+    },
+    {
+        "source": "OMNIA Partners",
+        "url_template": "https://www.omniapartners.com/search?q={query}",
+        "has_api": False,
+    },
+    {
+        "source": "Sourcewell",
+        "url_template": "https://www.sourcewell-mn.gov/contract-search?q={query}",
+        "has_api": False,
+    },
+    {
+        "source": "CDW-G",
+        "url_template": "https://www.cdwg.com/search/?key={query}",
+        "has_api": False,
+    },
+    {
+        "source": "GSA Advantage",
+        "url_template": "https://www.gsaadvantage.gov/advantage/s/search.do?q=0:{query}&db=0&searchType=0",
+        "has_api": False,
+    },
+]
+
+
+async def _search_usaspending(query: str) -> list[dict]:
+    """Search USASpending.gov for awarded contracts by vendor/keyword."""
+    url = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
+    payload = {
+        "filters": {
+            "keyword": query,
+            "award_type_codes": ["A", "B", "C", "D"],
+        },
+        "fields": [
+            "Award ID",
+            "Recipient Name",
+            "Description",
+            "Start Date",
+            "End Date",
+            "Award Amount",
+            "Awarding Agency",
+            "Award Type",
+        ],
+        "limit": 10,
+        "page": 1,
+        "sort": "Award Amount",
+        "order": "desc",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            results = []
+            for row in data.get("results", []):
+                results.append({
+                    "source": "USASpending.gov",
+                    "vendor_name": row.get("Recipient Name", ""),
+                    "contract_number": row.get("Award ID", ""),
+                    "description": row.get("Description", ""),
+                    "amount": row.get("Award Amount"),
+                    "start_date": row.get("Start Date", ""),
+                    "end_date": row.get("End Date", ""),
+                    "agency": row.get("Awarding Agency", ""),
+                    "award_type": row.get("Award Type", ""),
+                })
+            return results
+    except Exception as exc:
+        logger.warning("USASpending search failed: %s", exc)
+        return []
+
+
+async def _search_sam_gov(vendor_name: str) -> list[dict]:
+    """Search SAM.gov Entity API for vendor registration status."""
+    if not SAM_API_KEY:
+        return []
+    url = "https://api.sam.gov/entity-information/v4/entities"
+    params = {
+        "api_key": SAM_API_KEY,
+        "legalBusinessName": vendor_name,
+        "registrationStatus": "A",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            results = []
+            for entity in data.get("entityData", []):
+                reg = entity.get("entityRegistration", {})
+                core = entity.get("coreData", {})
+                gen_info = core.get("generalInformation", {})
+                results.append({
+                    "source": "SAM.gov",
+                    "vendor_name": reg.get("legalBusinessName", ""),
+                    "uei": reg.get("ueiSAM", ""),
+                    "cage_code": reg.get("cageCode", ""),
+                    "registration_status": reg.get("registrationStatus", ""),
+                    "expiration_date": reg.get("registrationExpirationDate", ""),
+                    "entity_type": gen_info.get("entityStructureDesc", ""),
+                    "physical_address": core.get("mailingAddress", {}).get("addressLine1", ""),
+                })
+            return results
+    except Exception as exc:
+        logger.warning("SAM.gov search failed: %s", exc)
+        return []
+
+
+async def search_contracts(query: str, search_type: str = "vendor") -> dict:
+    """Search all contract sources for the given query."""
+    usaspending_results = await _search_usaspending(query)
+    sam_results = await _search_sam_gov(query) if search_type == "vendor" else []
+
+    # Build direct search links
+    from urllib.parse import quote
+    encoded = quote(query)
+    direct_links = []
+    for link in DIRECT_SEARCH_LINKS:
+        direct_links.append({
+            "source": link["source"],
+            "url": link["url_template"].format(query=encoded),
+        })
+
+    return {
+        "query": query,
+        "search_type": search_type,
+        "api_results": usaspending_results + sam_results,
+        "direct_search_links": direct_links,
+        "sources_searched": {
+            "usaspending": {"searched": True, "count": len(usaspending_results)},
+            "sam_gov": {"searched": bool(SAM_API_KEY), "count": len(sam_results)},
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # PDF generation (ReportLab)
 # ---------------------------------------------------------------------------
 
@@ -1042,7 +1476,7 @@ def _generate_expediting_form_pdf(
 # ---------------------------------------------------------------------------
 
 
-@app.post("/api/upload", response_model=SubmissionResponse)
+@app.post("/api/upload")
 async def upload_document(file: UploadFile = File(...)):
     """Upload a vendor quote PDF or image and extract procurement fields."""
     if not file.filename:
@@ -1113,6 +1547,16 @@ async def upload_document(file: UploadFile = File(...)):
     })
 
     compliance = run_compliance_checks(extracted)
+    required_forms = determine_required_forms(extracted)
+
+    # Auto-check contracts if vendor name found
+    contract_matches = {}
+    if extracted.vendor_name:
+        try:
+            contract_matches = await search_contracts(extracted.vendor_name, "vendor")
+        except Exception as exc:
+            logger.warning("Auto contract search failed: %s", exc)
+            contract_matches = {"query": extracted.vendor_name, "api_results": [], "error": str(exc)}
 
     # Persist
     db = _load_db()
@@ -1123,17 +1567,21 @@ async def upload_document(file: UploadFile = File(...)):
         "uploaded_at": datetime.now().isoformat(),
         "extracted_data": extracted.model_dump(),
         "compliance": compliance.model_dump(),
+        "required_forms": required_forms,
+        "contract_matches": contract_matches,
     }
     db["submissions"][submission_id] = record
     _save_db(db)
 
-    return SubmissionResponse(
-        submission_id=submission_id,
-        filename=file.filename,
-        uploaded_at=record["uploaded_at"],
-        extracted_data=extracted,
-        compliance=compliance,
-    )
+    return {
+        "submission_id": submission_id,
+        "filename": file.filename,
+        "uploaded_at": record["uploaded_at"],
+        "extracted_data": extracted.model_dump(),
+        "compliance": compliance.model_dump(),
+        "required_forms": required_forms,
+        "contract_matches": contract_matches,
+    }
 
 
 @app.post("/api/compliance-check", response_model=ComplianceResult)
@@ -1212,6 +1660,74 @@ async def generate_form(req: GenerateFormRequest):
         filename=out_filename,
         media_type="application/pdf",
     )
+
+
+# ---------------------------------------------------------------------------
+# Required Forms endpoint
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/submissions/{submission_id}/required-forms")
+async def get_required_forms(submission_id: str):
+    """Get or re-compute required forms for a submission."""
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    extracted = ExtractedData(**record["extracted_data"])
+    forms = determine_required_forms(extracted)
+
+    # Update stored data
+    db["submissions"][submission_id]["required_forms"] = forms
+    _save_db(db)
+
+    return {"submission_id": submission_id, "required_forms": forms}
+
+
+# ---------------------------------------------------------------------------
+# Contract Search endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/contracts/search")
+async def contract_search(req: ContractSearchRequest):
+    """Search across all contract sources."""
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="Search query is required")
+    results = await search_contracts(req.query.strip(), req.search_type)
+    return results
+
+
+@app.get("/api/contracts/sources")
+async def contract_sources():
+    """List available contract search sources and their status."""
+    sources = [
+        {
+            "name": "USASpending.gov",
+            "type": "api",
+            "active": True,
+            "description": "Federal contract awards database",
+            "auth_required": False,
+        },
+        {
+            "name": "SAM.gov",
+            "type": "api",
+            "active": bool(SAM_API_KEY),
+            "description": "System for Award Management — vendor registration and exclusions",
+            "auth_required": True,
+            "auth_configured": bool(SAM_API_KEY),
+        },
+    ]
+    for link in DIRECT_SEARCH_LINKS:
+        sources.append({
+            "name": link["source"],
+            "type": "web_search",
+            "active": True,
+            "description": f"Search {link['source']} (opens external site)",
+            "auth_required": False,
+        })
+    return {"sources": sources}
 
 
 # ---------------------------------------------------------------------------
