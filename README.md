@@ -1,50 +1,47 @@
-# OCFL Vendor Quote Validation Portal
+# OCFL Procurement Portal
 
-Local demo of the Orange County FL procurement pre-submission portal. Upload a vendor quote PDF, extract key fields, validate against procurement rules, prefill the Piggyback Requisition Checklist, and attach a Certificate of Insurance.
+Purchase request submission portal for Orange County Government, Florida — Information Systems & Services (ISS) Department.
 
-## Quick Start
+## Features
+
+- **Document Upload & AI Extraction**: Upload vendor quotes/invoices; AI automatically extracts vendor name, amount, terms, and more
+- **Compliance Engine**: Checks all uploads against the full OCFL Procurement Procedures Manual (Rev. 06-25), flags missing documents, threshold violations, and M/WBE requirements
+- **Quick Reference**: Searchable threshold tables for both Standard (County-funded) and Federal procurement methods
+- **Form Pre-fill**: Extracted data is mapped to the official OCFL purchase request form fields
+
+## Procurement Thresholds (Standard / County-Funded)
+
+| Amount | Method | Requirements |
+|--------|--------|-------------|
+| $0 – $10,000 | P-Card / Small Purchase | Single transaction or direct purchase |
+| $10,000 – $150,000 | Informal Quotes (RFQ) | Min. 3 written quotes; 1 M/WBE vendor |
+| $150,000+ | Formal Solicitation | IFB or RFP, public advertisement |
+| $500,000+ | BCC Approval | Board of County Commissioners approval |
+
+## Tech Stack
+
+- **Backend**: Python / FastAPI
+- **Frontend**: Single-page application (vanilla JS)
+- **AI**: Claude Sonnet for document extraction
+- **PDF**: pikepdf for AcroForm filling
+
+## Running Locally
 
 ```bash
-python -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
-python portal_api_demo.py
+uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
-Then open http://localhost:5002
+Then open http://localhost:8000 in your browser.
 
-## API Endpoints
+## Project Structure
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/api/upload` | Upload a vendor quote PDF |
-| POST | `/api/validate` | Re-run validation for a submission |
-| GET | `/api/forms/piggyback/prefill` | Get prefilled checklist values |
-| POST | `/api/forms/piggyback/save` | Save checklist and generate PDF |
-| POST | `/api/attachments/coi` | Upload Certificate of Insurance |
-| GET | `/api/download/piggyback/{id}` | Download generated checklist PDF |
-| GET | `/api/admin/rules` | List validation rules |
-
-## Project Files
-
-| File | Purpose |
-|------|---------|
-| `portal_api_demo.py` | Main Flask API server |
-| `fill_acroform_tool.py` | List and fill PDF AcroForm fields |
-| `create_sample_quote.py` | Generate a sample vendor quote PDF for testing |
-| `openapi.yaml` | OpenAPI 3.0 specification |
-| `postman_collection.json` | Postman collection for API testing |
-| `requirements.txt` | Python dependencies |
-
-## Testing with Postman
-
-1. Import `postman_collection.json` into Postman
-2. Start the server locally on port 5002
-3. Run the requests in order: Upload Quote, Validate, Piggyback, COI
-
-## Generate Sample PDFs
-
-```bash
-python create_sample_quote.py
+```
+├── server.py              # FastAPI backend (API + compliance engine)
+├── fill_acroform_tool.py  # PDF AcroForm filler utility
+├── static/
+│   └── index.html         # Frontend SPA
+├── uploads/               # Uploaded documents (gitignored)
+├── filled/                # Generated filled PDFs (gitignored)
+└── requirements.txt
 ```

@@ -1,7 +1,8 @@
-venv/
 __pycache__/
 *.pyc
-demo_data/
+uploads/*
+!uploads/.gitkeep
+filled/*
+!filled/.gitkeep
 .env
-.DS_Store
-*.log
+*.pdf
