@@ -164,6 +164,39 @@ class ContractSearchRequest(BaseModel):
     search_type: str = "vendor"  # "vendor" or "product"
 
 
+class AuditEvent(BaseModel):
+    """A single event in a submission's timeline."""
+    event_type: str  # created, status_change, compliance_check, details_updated, routing, note_added, approval, rejection
+    timestamp: str
+    actor: str = "system"  # system, user, or specific name
+    description: str
+    metadata: dict = Field(default_factory=dict)
+
+
+class ApprovalRoute(BaseModel):
+    """Routing destination based on thresholds."""
+    route_to: str  # e.g., "supervisor", "procurement", "bcc"
+    reason: str
+    threshold_category: str
+    required_approvals: list[str] = Field(default_factory=list)
+    estimated_lead_time: str = ""
+
+
+class DuplicateAlert(BaseModel):
+    """Alert for potential duplicate or related purchases."""
+    alert_type: str  # duplicate, related, consolidation_opportunity
+    severity: str  # info, warning, critical
+    message: str
+    related_submissions: list[dict] = Field(default_factory=list)
+    combined_total: float = 0.0
+    suggested_action: str = ""
+
+
+class NLQueryRequest(BaseModel):
+    """Natural language query request."""
+    question: str
+
+
 # ---------------------------------------------------------------------------
 # AI extraction
 # ---------------------------------------------------------------------------
@@ -1748,6 +1781,499 @@ def _generate_expediting_form_pdf(
 
 
 # ---------------------------------------------------------------------------
+# Approval Routing Engine
+# ---------------------------------------------------------------------------
+
+
+def determine_approval_route(data: ExtractedData, compliance: ComplianceResult) -> ApprovalRoute:
+    """Determine where a submission should be routed based on OCFL thresholds."""
+    amount = data.total_amount
+    is_federal = data.funding_type == "federal"
+
+    if amount <= 10_000:
+        return ApprovalRoute(
+            route_to="supervisor",
+            reason=f"Amount ${amount:,.2f} is within small purchase threshold ($0\u2013$10K). Supervisor approval sufficient.",
+            threshold_category="small_purchase",
+            required_approvals=["Division Supervisor"],
+            estimated_lead_time="1\u20132 business days",
+        )
+    elif amount <= 100_000 and not is_federal:
+        return ApprovalRoute(
+            route_to="supervisor_plus_procurement",
+            reason=f"Amount ${amount:,.2f} requires department-level quoting ($10K\u2013$100K). Division supervisor approval + Procurement review.",
+            threshold_category="department_quotes",
+            required_approvals=["Division Supervisor", "Procurement Analyst"],
+            estimated_lead_time="3\u20135 business days",
+        )
+    elif amount <= 150_000 and not is_federal:
+        return ApprovalRoute(
+            route_to="procurement",
+            reason=f"Amount ${amount:,.2f} requires informal quotes ($100K\u2013$150K). Procurement Division handles solicitation.",
+            threshold_category="informal_quotes",
+            required_approvals=["Division Manager", "Procurement Analyst", "Procurement Manager"],
+            estimated_lead_time="2\u20134 weeks",
+        )
+    elif amount <= 500_000:
+        return ApprovalRoute(
+            route_to="procurement_formal",
+            reason=f"Amount ${amount:,.2f} exceeds $150K. Formal sealed solicitation required by Procurement Division.",
+            threshold_category="formal_solicitation",
+            required_approvals=["Division Manager", "Department Director", "Procurement Manager", "Procurement Division Chief"],
+            estimated_lead_time="6\u20138 weeks",
+        )
+    else:
+        return ApprovalRoute(
+            route_to="bcc",
+            reason=f"Amount ${amount:,.2f} exceeds $500K. Board of County Commissioners approval required.",
+            threshold_category="bcc_approval",
+            required_approvals=["Division Manager", "Department Director", "Procurement Division", "County Administrator", "Board of County Commissioners"],
+            estimated_lead_time="10\u201312 weeks",
+        )
+
+
+def _add_audit_event(record: dict, event_type: str, description: str, actor: str = "system", metadata: dict = None):
+    """Add an audit trail event to a submission record."""
+    if "audit_trail" not in record:
+        record["audit_trail"] = []
+    record["audit_trail"].append({
+        "event_type": event_type,
+        "timestamp": datetime.now().isoformat(),
+        "actor": actor,
+        "description": description,
+        "metadata": metadata or {},
+    })
+
+
+# ---------------------------------------------------------------------------
+# Duplicate / Related Purchase Detection
+# ---------------------------------------------------------------------------
+
+
+def detect_duplicates(data: ExtractedData, submission_id: str = "") -> list[dict]:
+    """Detect potential duplicate or related purchases."""
+    from datetime import timedelta
+    db = _load_db()
+    alerts = []
+    vendor_name = (data.vendor_name or "").strip().lower()
+    scope = (data.scope_of_services or "").strip().lower()
+    amount = data.total_amount
+
+    if not vendor_name:
+        return alerts
+
+    vendor_matches = []
+    ninety_days_ago = (datetime.now() - timedelta(days=90)).isoformat()[:10]
+
+    for sid, sub in db.get("submissions", {}).items():
+        if sid == submission_id:
+            continue
+        sub_ed = sub.get("extracted_data", {})
+        sub_vendor = (sub_ed.get("vendor_name", "") or "").strip().lower()
+        sub_uploaded = sub.get("uploaded_at", "")
+
+        if sub_vendor == vendor_name:
+            vendor_matches.append({
+                "submission_id": sid,
+                "vendor_name": sub_ed.get("vendor_name", ""),
+                "amount": sub_ed.get("total_amount", 0),
+                "scope": (sub_ed.get("scope_of_services", "") or "")[:100],
+                "date": sub_uploaded[:10] if sub_uploaded else "",
+                "status": sub.get("status", ""),
+            })
+
+    recent_vendor = [m for m in vendor_matches if m.get("date", "") >= ninety_days_ago]
+    if recent_vendor:
+        combined = amount + sum(m["amount"] for m in recent_vendor)
+        is_federal = data.funding_type == "federal"
+        split_threshold = 250_000 if is_federal else 150_000
+
+        severity = "warning" if combined > 50_000 else "info"
+        if combined > split_threshold and amount <= split_threshold:
+            severity = "critical"
+
+        alerts.append({
+            "alert_type": "consolidation_opportunity",
+            "severity": severity,
+            "message": (
+                f"{len(recent_vendor)} other purchase(s) to {data.vendor_name} in the past 90 days "
+                f"totaling ${sum(m['amount'] for m in recent_vendor):,.2f}. "
+                f"Combined with this request: ${combined:,.2f}."
+            ),
+            "related_submissions": recent_vendor,
+            "combined_total": combined,
+            "suggested_action": (
+                "Consider consolidating into a single purchase for better pricing."
+                + (f" Combined total exceeds ${split_threshold:,} threshold \u2014 higher procurement method may be required." if combined > split_threshold else "")
+            ),
+        })
+
+    return alerts
+
+
+# ---------------------------------------------------------------------------
+# Vendor Scorecard Engine
+# ---------------------------------------------------------------------------
+
+
+def build_vendor_scorecard(vendor_name: str) -> dict:
+    """Build a performance scorecard for a vendor."""
+    db = _load_db()
+    vendor_lower = vendor_name.strip().lower()
+
+    submissions = []
+    for sid, sub in db.get("submissions", {}).items():
+        ed = sub.get("extracted_data", {})
+        if (ed.get("vendor_name", "") or "").strip().lower() == vendor_lower:
+            submissions.append(sub)
+
+    if not submissions:
+        return {"vendor_name": vendor_name, "found": False}
+
+    amounts = [s.get("extracted_data", {}).get("total_amount", 0) for s in submissions]
+    dates = [s.get("uploaded_at", "")[:10] for s in submissions if s.get("uploaded_at")]
+    types = list(set(
+        s.get("extracted_data", {}).get("type_of_request", "")
+        for s in submissions if s.get("extracted_data", {}).get("type_of_request")
+    ))
+
+    total_issues = 0
+    critical_issues = 0
+    warning_issues = 0
+    for s in submissions:
+        issues = s.get("compliance", {}).get("issues", [])
+        total_issues += len(issues)
+        critical_issues += len([i for i in issues if i.get("severity") == "critical"])
+        warning_issues += len([i for i in issues if i.get("severity") == "warning"])
+
+    status_counts = {}
+    for s in submissions:
+        st = s.get("status", "pending_review")
+        status_counts[st] = status_counts.get(st, 0) + 1
+
+    return {
+        "vendor_name": vendor_name,
+        "found": True,
+        "total_purchases": len(submissions),
+        "total_spend": sum(amounts),
+        "avg_amount": sum(amounts) / len(amounts) if amounts else 0,
+        "min_amount": min(amounts) if amounts else 0,
+        "max_amount": max(amounts) if amounts else 0,
+        "first_purchase": min(dates) if dates else "",
+        "last_purchase": max(dates) if dates else "",
+        "types_of_request": types,
+        "compliance_summary": {"total_issues": total_issues, "critical": critical_issues, "warnings": warning_issues},
+        "status_distribution": status_counts,
+        "submissions": [
+            {
+                "submission_id": s.get("submission_id", ""),
+                "date": s.get("uploaded_at", "")[:10] if s.get("uploaded_at") else "",
+                "amount": s.get("extracted_data", {}).get("total_amount", 0),
+                "scope": (s.get("extracted_data", {}).get("scope_of_services", "") or "")[:100],
+                "status": s.get("status", ""),
+            }
+            for s in sorted(submissions, key=lambda x: x.get("uploaded_at", ""), reverse=True)
+        ],
+    }
+
+
+def build_all_vendor_scorecards() -> list[dict]:
+    """Build scorecards for all vendors."""
+    db = _load_db()
+    vendors = set()
+    for sid, sub in db.get("submissions", {}).items():
+        vn = (sub.get("extracted_data", {}).get("vendor_name", "") or "").strip()
+        if vn:
+            vendors.add(vn)
+    return [sc for v in sorted(vendors) if (sc := build_vendor_scorecard(v)).get("found")]
+
+
+# ---------------------------------------------------------------------------
+# Smart Form Auto-Fill
+# ---------------------------------------------------------------------------
+
+
+def get_vendor_autofill(vendor_name: str) -> dict:
+    """Look up previous submissions for a vendor and return auto-fill data."""
+    db = _load_db()
+    vendor_lower = vendor_name.strip().lower()
+
+    matches = []
+    for sid, sub in db.get("submissions", {}).items():
+        ed = sub.get("extracted_data", {})
+        if (ed.get("vendor_name", "") or "").strip().lower() == vendor_lower:
+            matches.append(sub)
+
+    if not matches:
+        return {"found": False, "vendor_name": vendor_name}
+
+    matches.sort(key=lambda x: x.get("uploaded_at", ""), reverse=True)
+    latest = matches[0].get("extracted_data", {})
+
+    return {
+        "found": True,
+        "vendor_name": vendor_name,
+        "previous_purchases": len(matches),
+        "suggested_fields": {
+            "vendor_number": latest.get("vendor_number", ""),
+            "department": latest.get("department", ""),
+            "accounting_line": latest.get("accounting_line", ""),
+            "type_of_request": latest.get("type_of_request", ""),
+            "contract_number": latest.get("contract_number", ""),
+            "contract_type": latest.get("contract_type", ""),
+            "requestor_name": latest.get("requestor_name", ""),
+            "custodian_code_shipping_notes": latest.get("custodian_code_shipping_notes", ""),
+        },
+        "last_amount": latest.get("total_amount", 0),
+        "last_purchase_date": matches[0].get("uploaded_at", "")[:10],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Expiration / Renewal Alerts Engine
+# ---------------------------------------------------------------------------
+
+
+def get_expiration_alerts() -> list[dict]:
+    """Check all submissions for upcoming contract/quote expirations."""
+    db = _load_db()
+    alerts = []
+    today = date.today()
+
+    for sid, sub in db.get("submissions", {}).items():
+        ed = sub.get("extracted_data", {})
+        exp_date_str = ed.get("expiration_date", "")
+        if not exp_date_str:
+            continue
+        try:
+            exp_date = datetime.strptime(exp_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+
+        days_until = (exp_date - today).days
+        vendor = ed.get("vendor_name", "Unknown")
+        amount = ed.get("total_amount", 0)
+        scope = (ed.get("scope_of_services", "") or "")[:100]
+
+        if days_until < 0:
+            alerts.append({"submission_id": sid, "vendor_name": vendor, "expiration_date": exp_date_str, "days_until_expiration": days_until, "severity": "critical", "message": f"EXPIRED {abs(days_until)} days ago", "amount": amount, "scope": scope})
+        elif days_until <= 30:
+            alerts.append({"submission_id": sid, "vendor_name": vendor, "expiration_date": exp_date_str, "days_until_expiration": days_until, "severity": "critical", "message": f"Expires in {days_until} days", "amount": amount, "scope": scope})
+        elif days_until <= 60:
+            alerts.append({"submission_id": sid, "vendor_name": vendor, "expiration_date": exp_date_str, "days_until_expiration": days_until, "severity": "warning", "message": f"Expires in {days_until} days", "amount": amount, "scope": scope})
+        elif days_until <= 90:
+            alerts.append({"submission_id": sid, "vendor_name": vendor, "expiration_date": exp_date_str, "days_until_expiration": days_until, "severity": "info", "message": f"Expires in {days_until} days", "amount": amount, "scope": scope})
+
+    alerts.sort(key=lambda a: a["days_until_expiration"])
+    return alerts
+
+
+# ---------------------------------------------------------------------------
+# Spend Analytics Engine
+# ---------------------------------------------------------------------------
+
+
+def compute_spend_analytics() -> dict:
+    """Compute comprehensive spend analytics from all submissions."""
+    db = _load_db()
+    submissions = list(db.get("submissions", {}).values())
+
+    if not submissions:
+        return {"total_submissions": 0}
+
+    total_amount = 0
+    by_vendor = {}
+    by_type = {}
+    by_department = {}
+    by_month = {}
+    by_status = {}
+    by_threshold = {}
+    amounts = []
+
+    for s in submissions:
+        ed = s.get("extracted_data", {})
+        comp = s.get("compliance", {})
+        amount = ed.get("total_amount", 0) or 0
+        total_amount += amount
+        amounts.append(amount)
+
+        vendor = (ed.get("vendor_name", "") or "Unknown").strip()
+        if vendor:
+            by_vendor.setdefault(vendor, {"count": 0, "total": 0})
+            by_vendor[vendor]["count"] += 1
+            by_vendor[vendor]["total"] += amount
+
+        req_type = ed.get("type_of_request", "") or "Unclassified"
+        by_type.setdefault(req_type, {"count": 0, "total": 0})
+        by_type[req_type]["count"] += 1
+        by_type[req_type]["total"] += amount
+
+        dept = (ed.get("department", "") or "Unknown").strip()
+        by_department.setdefault(dept, {"count": 0, "total": 0})
+        by_department[dept]["count"] += 1
+        by_department[dept]["total"] += amount
+
+        uploaded = s.get("uploaded_at", "")
+        if uploaded:
+            month_key = uploaded[:7]
+            by_month.setdefault(month_key, {"count": 0, "total": 0})
+            by_month[month_key]["count"] += 1
+            by_month[month_key]["total"] += amount
+
+        status = s.get("status", "pending_review")
+        by_status.setdefault(status, {"count": 0, "total": 0})
+        by_status[status]["count"] += 1
+        by_status[status]["total"] += amount
+
+        threshold = comp.get("threshold_category", "unknown")
+        by_threshold.setdefault(threshold, {"count": 0, "total": 0})
+        by_threshold[threshold]["count"] += 1
+        by_threshold[threshold]["total"] += amount
+
+    top_vendors = sorted(by_vendor.items(), key=lambda x: x[1]["total"], reverse=True)[:10]
+
+    return {
+        "total_submissions": len(submissions),
+        "total_spend": total_amount,
+        "avg_purchase": total_amount / len(submissions) if submissions else 0,
+        "min_purchase": min(amounts) if amounts else 0,
+        "max_purchase": max(amounts) if amounts else 0,
+        "by_vendor": [{"vendor": k, **v} for k, v in top_vendors],
+        "by_type": [{"type": k, **v} for k, v in sorted(by_type.items(), key=lambda x: x[1]["total"], reverse=True)],
+        "by_department": [{"department": k, **v} for k, v in sorted(by_department.items(), key=lambda x: x[1]["total"], reverse=True)],
+        "by_month": [{"month": k, **v} for k, v in sorted(by_month.items())],
+        "by_status": [{"status": k, **v} for k, v in by_status.items()],
+        "by_threshold": [{"threshold": k, **v} for k, v in by_threshold.items()],
+        "unique_vendors": len(by_vendor),
+        "unique_departments": len(by_department),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Natural Language Query Engine
+# ---------------------------------------------------------------------------
+
+NLQ_PROMPT = """\
+You are a data analyst for Orange County, Florida's ISS procurement portal. \
+Answer the user's question based on the data provided.
+
+SUBMISSION DATA (JSON):
+{submissions_summary}
+
+USER QUESTION: {question}
+
+Rules:
+- Answer concisely and specifically with numbers when possible
+- Format dollar amounts with commas and $ symbol
+- If the data doesn't contain enough info, say so
+- Reference specific vendors, dates, and amounts when relevant
+
+Return ONLY valid JSON:
+{{
+  "answer": "Your natural language answer",
+  "data": [],
+  "query_type": "spend|vendor|status|compliance|general",
+  "confidence": "low|medium|high"
+}}
+"""
+
+
+def _build_submissions_summary() -> str:
+    """Build a compact summary of all submissions for NLQ context."""
+    db = _load_db()
+    summaries = []
+    for sid, sub in db.get("submissions", {}).items():
+        ed = sub.get("extracted_data", {})
+        comp = sub.get("compliance", {})
+        summaries.append({
+            "id": sid[:8],
+            "date": (sub.get("uploaded_at", "") or "")[:10],
+            "vendor": ed.get("vendor_name", ""),
+            "amount": ed.get("total_amount", 0),
+            "scope": (ed.get("scope_of_services", "") or "")[:80],
+            "department": ed.get("department", ""),
+            "requestor": ed.get("requestor_name", ""),
+            "type": ed.get("type_of_request", ""),
+            "contract_type": ed.get("contract_type", ""),
+            "status": sub.get("status", ""),
+            "threshold": comp.get("threshold_category", ""),
+            "funding_type": ed.get("funding_type", "standard"),
+            "expiration": ed.get("expiration_date", ""),
+        })
+    return json.dumps(summaries, indent=1)
+
+
+def run_natural_language_query(question: str) -> dict:
+    """Run a natural language query against submission data using local LLM."""
+    summary = _build_submissions_summary()
+    prompt = NLQ_PROMPT.format(submissions_summary=summary, question=question)
+
+    try:
+        response = httpx.post(
+            f"{OLLAMA_HOST}/api/chat",
+            json={
+                "model": LLM_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "format": "json",
+                "options": {"temperature": 0.1, "num_predict": 2048},
+            },
+            timeout=120.0,
+        )
+        response.raise_for_status()
+        result = _parse_llm_response(response.json())
+        return {
+            "question": question,
+            "answer": result.get("answer", "Unable to process query."),
+            "data": result.get("data", []),
+            "query_type": result.get("query_type", "general"),
+            "confidence": result.get("confidence", "medium"),
+        }
+    except Exception:
+        return _fallback_nlq(question)
+
+
+def _fallback_nlq(question: str) -> dict:
+    """Fallback NLQ when Ollama is unavailable."""
+    db = _load_db()
+    submissions = list(db.get("submissions", {}).values())
+    q = question.lower()
+
+    if any(kw in q for kw in ["spend", "spent", "total", "how much", "cost", "amount"]):
+        for s in submissions:
+            vendor = (s.get("extracted_data", {}).get("vendor_name", "") or "").lower()
+            if vendor and vendor in q:
+                vendor_subs = [sub for sub in submissions if (sub.get("extracted_data", {}).get("vendor_name", "") or "").lower() == vendor]
+                total = sum(sub.get("extracted_data", {}).get("total_amount", 0) for sub in vendor_subs)
+                return {"question": question, "answer": f"Total spend with {s.get('extracted_data', {}).get('vendor_name', '')}: ${total:,.2f} across {len(vendor_subs)} purchase(s).", "data": [], "query_type": "spend", "confidence": "high"}
+        total = sum(s.get("extracted_data", {}).get("total_amount", 0) for s in submissions)
+        return {"question": question, "answer": f"Total spend across all {len(submissions)} submissions: ${total:,.2f}.", "data": [], "query_type": "spend", "confidence": "high"}
+
+    if any(kw in q for kw in ["pending", "approved", "rejected", "status"]):
+        status_counts = {}
+        for s in submissions:
+            st = s.get("status", "pending_review")
+            status_counts[st] = status_counts.get(st, 0) + 1
+        parts = [f"{v} {k.replace('_', ' ')}" for k, v in status_counts.items()]
+        return {"question": question, "answer": f"Current statuses: {', '.join(parts)}.", "data": [], "query_type": "status", "confidence": "high"}
+
+    if any(kw in q for kw in ["vendor", "supplier"]):
+        vendors = {}
+        for s in submissions:
+            v = (s.get("extracted_data", {}).get("vendor_name", "") or "").strip()
+            if v:
+                vendors.setdefault(v, {"count": 0, "total": 0})
+                vendors[v]["count"] += 1
+                vendors[v]["total"] += s.get("extracted_data", {}).get("total_amount", 0)
+        top = sorted(vendors.items(), key=lambda x: x[1]["total"], reverse=True)[:5]
+        parts = [f"{v}: ${d['total']:,.2f} ({d['count']} purchases)" for v, d in top]
+        return {"question": question, "answer": f"Top vendors by spend: " + "; ".join(parts), "data": [], "query_type": "vendor", "confidence": "medium"}
+
+    total = sum(s.get("extracted_data", {}).get("total_amount", 0) for s in submissions)
+    return {"question": question, "answer": f"I found {len(submissions)} submissions with ${total:,.2f} in total spend. Try asking about spending by vendor, statuses, or specific amounts.", "data": [], "query_type": "general", "confidence": "low"}
+
+
+# ---------------------------------------------------------------------------
 # API endpoints
 # ---------------------------------------------------------------------------
 
@@ -1849,6 +2375,11 @@ async def upload_document(file: UploadFile = File(...)):
     critical_issues = [i for i in compliance.issues if i.severity == "critical"]
     initial_status = "pending_review" if critical_issues else "pending_review"
 
+    # Compute approval routing
+    route = determine_approval_route(extracted, compliance)
+    # Detect duplicates
+    duplicate_alerts = detect_duplicates(extracted, submission_id)
+
     record = {
         "submission_id": submission_id,
         "filename": file.filename,
@@ -1861,8 +2392,18 @@ async def upload_document(file: UploadFile = File(...)):
         "required_forms": required_forms,
         "contract_matches": contract_matches,
         "pricing_intelligence": pricing_intelligence,
+        "approval_routing": route.model_dump(),
+        "duplicate_alerts": duplicate_alerts,
+        "audit_trail": [],
         "notes": [],
     }
+    # Build initial audit trail
+    _add_audit_event(record, "created", f"Document '{file.filename}' uploaded and processed. AI extracted {len(extracted.line_items)} line items, total ${extracted.total_amount:,.2f}.")
+    _add_audit_event(record, "compliance_check", f"Compliance check completed: {len([i for i in compliance.issues if i.severity == 'critical'])} critical, {len([i for i in compliance.issues if i.severity == 'warning'])} warnings.")
+    _add_audit_event(record, "routing", f"Routed to: {route.route_to.replace('_', ' ').title()}. Estimated lead time: {route.estimated_lead_time}.", metadata={"route": route.model_dump()})
+    if duplicate_alerts:
+        _add_audit_event(record, "duplicate_alert", f"{len(duplicate_alerts)} duplicate/related purchase alert(s) detected.", metadata={"alerts": duplicate_alerts})
+
     db["submissions"][submission_id] = record
     _save_db(db)
 
@@ -1875,6 +2416,8 @@ async def upload_document(file: UploadFile = File(...)):
         "required_forms": required_forms,
         "contract_matches": contract_matches,
         "pricing_intelligence": pricing_intelligence,
+        "approval_routing": route.model_dump(),
+        "duplicate_alerts": duplicate_alerts,
     }
 
 
@@ -1962,6 +2505,7 @@ async def post_submission_status(submission_id: str, req: StatusUpdateRequest):
     if not record:
         raise HTTPException(status_code=404, detail="Submission not found")
 
+    old_status = record.get("status", "pending_review")
     record["status"] = req.status
     if req.note:
         if "notes" not in record:
@@ -1972,6 +2516,13 @@ async def post_submission_status(submission_id: str, req: StatusUpdateRequest):
             "status_change": req.status,
         })
     record["updated_at"] = datetime.now().isoformat()
+    _add_audit_event(
+        record, "status_change",
+        f"Status changed from '{old_status.replace('_', ' ')}' to '{req.status.replace('_', ' ')}'."
+        + (f" Note: {req.note}" if req.note else ""),
+        actor="user",
+        metadata={"old_status": old_status, "new_status": req.status},
+    )
     _save_db(db)
 
     return {"submission_id": submission_id, "status": req.status}
@@ -2014,6 +2565,7 @@ async def update_purchase_details(submission_id: str, req: PurchaseDetailsUpdate
 
     record["extracted_data"] = ed
     record["updated_at"] = datetime.now().isoformat()
+    _add_audit_event(record, "details_updated", "Purchase details form updated.", actor="user")
     _save_db(db)
 
     return {"submission_id": submission_id, "message": "Purchase details saved"}
@@ -2216,6 +2768,96 @@ async def contract_sources():
             "auth_required": False,
         })
     return {"sources": sources}
+
+
+# ---------------------------------------------------------------------------
+# New Feature Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/analytics")
+async def get_analytics():
+    """Get comprehensive spend analytics."""
+    return compute_spend_analytics()
+
+
+@app.get("/api/vendor-scorecard/{vendor_name}")
+async def get_vendor_scorecard(vendor_name: str):
+    """Get performance scorecard for a specific vendor."""
+    from urllib.parse import unquote
+    return build_vendor_scorecard(unquote(vendor_name))
+
+
+@app.get("/api/vendor-scorecards")
+async def get_all_vendor_scorecards():
+    """Get scorecards for all vendors."""
+    return {"scorecards": build_all_vendor_scorecards()}
+
+
+@app.get("/api/vendor-autofill/{vendor_name}")
+async def get_autofill(vendor_name: str):
+    """Get auto-fill suggestions for a returning vendor."""
+    from urllib.parse import unquote
+    return get_vendor_autofill(unquote(vendor_name))
+
+
+@app.get("/api/expiration-alerts")
+async def get_expiration_alerts_endpoint():
+    """Get all upcoming contract/quote expirations."""
+    return {"alerts": get_expiration_alerts()}
+
+
+@app.get("/api/duplicate-check/{submission_id}")
+async def check_duplicates(submission_id: str):
+    """Check for duplicate or related purchases."""
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    extracted = ExtractedData(**{
+        k: v for k, v in record["extracted_data"].items()
+        if k in ExtractedData.model_fields
+    })
+    alerts = detect_duplicates(extracted, submission_id)
+    return {"submission_id": submission_id, "alerts": alerts}
+
+
+@app.get("/api/submission/{submission_id}/timeline")
+async def get_submission_timeline(submission_id: str):
+    """Get the full audit trail / timeline for a submission."""
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return {
+        "submission_id": submission_id,
+        "timeline": record.get("audit_trail", []),
+        "status": record.get("status", "pending_review"),
+    }
+
+
+@app.get("/api/submission/{submission_id}/routing")
+async def get_submission_routing(submission_id: str):
+    """Get the approval routing for a submission."""
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    extracted = ExtractedData(**{
+        k: v for k, v in record["extracted_data"].items()
+        if k in ExtractedData.model_fields
+    })
+    compliance = ComplianceResult(**record.get("compliance", {}))
+    route = determine_approval_route(extracted, compliance)
+    return {"submission_id": submission_id, "routing": route.model_dump()}
+
+
+@app.post("/api/nlq")
+async def natural_language_query(req: NLQueryRequest):
+    """Answer a natural language question about procurement data."""
+    if not req.question or not req.question.strip():
+        raise HTTPException(status_code=400, detail="Question is required")
+    return run_natural_language_query(req.question.strip())
 
 
 # ---------------------------------------------------------------------------
