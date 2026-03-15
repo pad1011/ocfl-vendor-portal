@@ -1113,6 +1113,275 @@ async def search_contracts(query: str, search_type: str = "vendor") -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Pricing Intelligence Engine
+# ---------------------------------------------------------------------------
+
+PRICING_ANALYSIS_PROMPT = """\
+You are a procurement pricing analyst for Orange County, Florida. \
+Analyze the uploaded quote details and comparable contract data to produce \
+a pricing intelligence report.
+
+QUOTE DETAILS:
+- Vendor: {vendor_name}
+- Product/Service: {scope_of_services}
+- Line Items: {line_items_summary}
+- Total Amount: ${total_amount:,.2f}
+
+COMPARABLE CONTRACTS FOUND:
+{comparable_data}
+
+Return ONLY valid JSON with:
+{{
+  "search_queries": ["list of 3-5 short product-specific search queries \
+that would find comparable government POs, e.g. 'Dell PowerEdge R750 \
+government purchase order', 'network switches county contract award'"],
+  "product_keywords": ["list of 2-4 concise product keywords for \
+cooperative contract searches, e.g. 'Dell PowerEdge R750', 'network switch'"],
+  "price_assessment": "Brief assessment of whether the quoted price \
+appears competitive, above market, or below market based on available data",
+  "savings_opportunities": ["list of specific actionable suggestions, \
+e.g. 'NASPO ValuePoint contract for Dell servers may offer 15-20%% discount', \
+'Check GSA IT Schedule 70 for comparable pricing'"],
+  "confidence": "low|medium|high — based on how much comparable data was found"
+}}
+"""
+
+
+async def _search_usaspending_by_product(description: str) -> list[dict]:
+    """Search USASpending.gov by product/service description to find comparable government purchases."""
+    url = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
+    # Use a shorter keyword from the description for better matches
+    keywords = description[:200] if description else ""
+    payload = {
+        "filters": {
+            "keyword": keywords,
+            "award_type_codes": ["A", "B", "C", "D"],
+        },
+        "fields": [
+            "Award ID",
+            "Recipient Name",
+            "Description",
+            "Start Date",
+            "End Date",
+            "Award Amount",
+            "Awarding Agency",
+            "Award Type",
+        ],
+        "limit": 15,
+        "page": 1,
+        "sort": "Award Amount",
+        "order": "asc",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            results = []
+            for row in data.get("results", []):
+                results.append({
+                    "source": "USASpending.gov",
+                    "vendor_name": row.get("Recipient Name", ""),
+                    "contract_number": row.get("Award ID", ""),
+                    "description": row.get("Description", ""),
+                    "amount": row.get("Award Amount"),
+                    "start_date": row.get("Start Date", ""),
+                    "end_date": row.get("End Date", ""),
+                    "agency": row.get("Awarding Agency", ""),
+                    "award_type": row.get("Award Type", ""),
+                })
+            return results
+    except Exception as exc:
+        logger.warning("USASpending product search failed: %s", exc)
+        return []
+
+
+async def _search_web_government_pos(queries: list[str]) -> list[dict]:
+    """Search the web for government purchase orders and contract awards.
+
+    Uses a simple Google Custom Search–style approach via DuckDuckGo instant
+    answer API (free, no key).  Falls back gracefully.
+    """
+    results = []
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for query in queries[:5]:  # limit to 5 queries
+                search_query = f"{query} site:gov OR site:org government purchase order contract award"
+                resp = await client.get(
+                    "https://api.duckduckgo.com/",
+                    params={"q": search_query, "format": "json", "no_html": "1"},
+                    follow_redirects=True,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # Collect related topics
+                    for topic in data.get("RelatedTopics", [])[:3]:
+                        if isinstance(topic, dict) and topic.get("FirstURL"):
+                            results.append({
+                                "source": "Web Search",
+                                "title": topic.get("Text", "")[:200],
+                                "url": topic.get("FirstURL", ""),
+                                "query_used": query,
+                            })
+                    # Also check abstract
+                    if data.get("AbstractURL"):
+                        results.append({
+                            "source": "Web Search",
+                            "title": data.get("Abstract", data.get("Heading", ""))[:200],
+                            "url": data["AbstractURL"],
+                            "query_used": query,
+                        })
+    except Exception as exc:
+        logger.warning("Web PO search failed: %s", exc)
+    return results
+
+
+def _call_llm_pricing_analysis(
+    extracted: "ExtractedData",
+    comparable_contracts: list[dict],
+) -> dict:
+    """Use local LLM to analyze pricing and generate search recommendations."""
+    # Build line items summary
+    line_items_summary = "; ".join(
+        f"{li.description} (qty {li.quantity}, ${li.unit_price:,.2f} ea)"
+        for li in extracted.line_items[:10]
+    ) if extracted.line_items else "No line items extracted"
+
+    # Build comparable data summary
+    if comparable_contracts:
+        comparable_lines = []
+        for c in comparable_contracts[:10]:
+            line = f"- {c.get('vendor_name', 'Unknown')}: ${c.get('amount', 0):,.2f}"
+            if c.get('description'):
+                line += f" ({c['description'][:100]})"
+            if c.get('agency'):
+                line += f" — {c['agency']}"
+            comparable_lines.append(line)
+        comparable_data = "\n".join(comparable_lines)
+    else:
+        comparable_data = "No comparable contracts found in initial search."
+
+    prompt = PRICING_ANALYSIS_PROMPT.format(
+        vendor_name=extracted.vendor_name,
+        scope_of_services=extracted.scope_of_services or "Not specified",
+        line_items_summary=line_items_summary,
+        total_amount=extracted.total_amount,
+        comparable_data=comparable_data,
+    )
+
+    try:
+        response = httpx.post(
+            f"{OLLAMA_HOST}/api/chat",
+            json={
+                "model": LLM_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "format": "json",
+                "options": {"temperature": 0.2, "num_predict": 2048},
+            },
+            timeout=120.0,
+        )
+        response.raise_for_status()
+        return _parse_llm_response(response.json())
+    except Exception as exc:
+        logger.warning("LLM pricing analysis failed: %s", exc)
+        # Return sensible defaults when LLM is unavailable
+        scope = extracted.scope_of_services or ""
+        vendor = extracted.vendor_name or ""
+        base_keywords = [w for w in (scope + " " + vendor).split() if len(w) > 3][:4]
+        return {
+            "search_queries": [
+                f"{' '.join(base_keywords[:3])} government purchase order",
+                f"{vendor} county contract award",
+                f"{' '.join(base_keywords[:2])} state contract pricing",
+            ],
+            "product_keywords": base_keywords[:3] if base_keywords else ["general"],
+            "price_assessment": "Unable to assess — AI analysis unavailable. Review comparable contracts manually.",
+            "savings_opportunities": [
+                "Check cooperative contracts (NASPO, Sourcewell, GSA) for pre-negotiated pricing.",
+                "Search USASpending.gov for comparable federal purchases.",
+            ],
+            "confidence": "low",
+        }
+
+
+async def run_pricing_intelligence(extracted: "ExtractedData") -> dict:
+    """Run the full pricing intelligence pipeline.
+
+    Steps:
+    1. Search USASpending by product description (not just vendor)
+    2. Ask LLM to analyze quote vs comparable data and suggest searches
+    3. Run web searches for other government POs
+    4. Generate cooperative contract search links
+    5. Return structured pricing intelligence report
+    """
+    import asyncio
+    from urllib.parse import quote
+
+    # Step 1: Product-based search on USASpending
+    product_query = extracted.scope_of_services or ""
+    if not product_query and extracted.line_items:
+        product_query = " ".join(
+            li.description for li in extracted.line_items[:3]
+        )
+    if not product_query:
+        product_query = extracted.vendor_name
+
+    usaspending_product_results = await _search_usaspending_by_product(product_query)
+
+    # Step 2: LLM analysis — generates search queries + assessment
+    llm_analysis = _call_llm_pricing_analysis(extracted, usaspending_product_results)
+
+    # Step 3: Web search for other government POs
+    web_search_queries = llm_analysis.get("search_queries", [])
+    web_po_results = await _search_web_government_pos(web_search_queries)
+
+    # Step 4: Cooperative contract search links (product-specific)
+    product_keywords = llm_analysis.get("product_keywords", [])
+    primary_keyword = product_keywords[0] if product_keywords else product_query[:80]
+    encoded_kw = quote(primary_keyword)
+
+    coop_search_links = []
+    for link_def in DIRECT_SEARCH_LINKS:
+        coop_search_links.append({
+            "source": link_def["source"],
+            "url": link_def["url_template"].format(query=encoded_kw),
+            "search_term": primary_keyword,
+        })
+
+    # Step 5: Calculate basic stats from comparable contracts
+    comparable_amounts = [
+        r["amount"] for r in usaspending_product_results
+        if r.get("amount") and isinstance(r["amount"], (int, float)) and r["amount"] > 0
+    ]
+    price_stats = {}
+    if comparable_amounts:
+        price_stats = {
+            "min": min(comparable_amounts),
+            "max": max(comparable_amounts),
+            "avg": sum(comparable_amounts) / len(comparable_amounts),
+            "median": sorted(comparable_amounts)[len(comparable_amounts) // 2],
+            "count": len(comparable_amounts),
+        }
+
+    return {
+        "quote_amount": extracted.total_amount,
+        "vendor_name": extracted.vendor_name,
+        "product_searched": product_query[:200],
+        "comparable_contracts": usaspending_product_results[:10],
+        "web_po_results": web_po_results[:10],
+        "coop_search_links": coop_search_links,
+        "price_stats": price_stats,
+        "llm_analysis": {
+            "price_assessment": llm_analysis.get("price_assessment", ""),
+            "savings_opportunities": llm_analysis.get("savings_opportunities", []),
+            "confidence": llm_analysis.get("confidence", "low"),
+        },
+        "search_queries_used": web_search_queries,
+    }
+
+
+# ---------------------------------------------------------------------------
 # PDF generation (ReportLab)
 # ---------------------------------------------------------------------------
 
@@ -1558,6 +1827,15 @@ async def upload_document(file: UploadFile = File(...)):
             logger.warning("Auto contract search failed: %s", exc)
             contract_matches = {"query": extracted.vendor_name, "api_results": [], "error": str(exc)}
 
+    # Run Pricing Intelligence — searches for better pricing on
+    # cooperative contracts and comparable POs from other agencies
+    pricing_intelligence = {}
+    try:
+        pricing_intelligence = await run_pricing_intelligence(extracted)
+    except Exception as exc:
+        logger.warning("Pricing intelligence failed: %s", exc)
+        pricing_intelligence = {"error": str(exc)}
+
     # Persist
     db = _load_db()
     record = {
@@ -1569,6 +1847,7 @@ async def upload_document(file: UploadFile = File(...)):
         "compliance": compliance.model_dump(),
         "required_forms": required_forms,
         "contract_matches": contract_matches,
+        "pricing_intelligence": pricing_intelligence,
     }
     db["submissions"][submission_id] = record
     _save_db(db)
@@ -1581,6 +1860,7 @@ async def upload_document(file: UploadFile = File(...)):
         "compliance": compliance.model_dump(),
         "required_forms": required_forms,
         "contract_matches": contract_matches,
+        "pricing_intelligence": pricing_intelligence,
     }
 
 
@@ -1683,6 +1963,33 @@ async def get_required_forms(submission_id: str):
     _save_db(db)
 
     return {"submission_id": submission_id, "required_forms": forms}
+
+
+# ---------------------------------------------------------------------------
+# Pricing Intelligence endpoint
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/pricing-intelligence/{submission_id}")
+async def get_pricing_intelligence(submission_id: str):
+    """Run or re-run pricing intelligence for a submission."""
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    extracted = ExtractedData(**{
+        k: v for k, v in record["extracted_data"].items()
+        if k in ExtractedData.model_fields
+    })
+
+    pricing = await run_pricing_intelligence(extracted)
+
+    # Update stored data
+    db["submissions"][submission_id]["pricing_intelligence"] = pricing
+    _save_db(db)
+
+    return {"submission_id": submission_id, "pricing_intelligence": pricing}
 
 
 # ---------------------------------------------------------------------------
