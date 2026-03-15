@@ -825,6 +825,71 @@ tbody tr:last-child td {
   overflow-y: auto;
 }
 
+/* Pricing Intelligence styles */
+.pricing-intel-card {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  background: white;
+  transition: box-shadow 0.15s ease;
+}
+.pricing-intel-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.pricing-assessment {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--navy);
+  background: var(--navy-50);
+  margin-bottom: var(--space-4);
+}
+.pricing-assessment.high { border-left-color: var(--green); background: var(--green-light); }
+.pricing-assessment.medium { border-left-color: var(--amber); background: var(--amber-light); }
+.pricing-assessment.low { border-left-color: var(--gray-400); background: var(--gray-50); }
+.savings-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--green-light);
+  color: var(--green);
+}
+.pricing-stat {
+  text-align: center;
+  padding: var(--space-3);
+}
+.pricing-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+.pricing-stat-label {
+  font-size: 0.72rem;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+.pricing-refresh-btn {
+  background: none;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+.pricing-refresh-btn:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+  background: var(--navy-50);
+}
+
 /* Compliance issue items */
 .compliance-item {
   padding: var(--space-3) var(--space-4);
@@ -2126,6 +2191,42 @@ function getDemoReviewData(id) {
       approval_level: 'Division Manager + Procurement Review',
       lead_time: '15–20 business days',
       relevant_sections: ['Section 4.2', 'Section 5.1', 'Section 6.1', 'AR 8.01'],
+    },
+    pricing_intelligence: {
+      quote_amount: 47500,
+      vendor_name: 'Acme Technology Solutions',
+      product_searched: 'Cisco Catalyst switches access points network infrastructure',
+      comparable_contracts: [
+        { source: 'USASpending.gov', vendor_name: 'CDW Government LLC', contract_number: 'GS-35F-0119Y', description: 'Cisco Catalyst 9300 switches — network infrastructure', amount: 38200, agency: 'Dept of Interior', end_date: '2026-09-30' },
+        { source: 'USASpending.gov', vendor_name: 'SHI International Corp', contract_number: '47QTCA19D00CC', description: 'Cisco enterprise networking equipment and access points', amount: 42850, agency: 'GSA Federal Supply', end_date: '2027-03-15' },
+        { source: 'USASpending.gov', vendor_name: 'Insight Public Sector', contract_number: 'W52P1J-20-D-0035', description: 'Network switching infrastructure — Cisco Catalyst series', amount: 51300, agency: 'Dept of Army', end_date: '2026-12-31' },
+        { source: 'USASpending.gov', vendor_name: 'Connection Public Sector', contract_number: 'GS-35F-0511T', description: 'Wireless access points and network switches', amount: 29750, agency: 'Dept of Education', end_date: '2026-06-30' },
+        { source: 'USASpending.gov', vendor_name: 'Dell Technologies', contract_number: '47QSWA20D008Y', description: 'Campus network refresh — switches, APs, controllers', amount: 55100, agency: 'Dept of Justice', end_date: '2027-01-15' },
+      ],
+      web_po_results: [
+        { source: 'Web Search', title: 'Seminole County FL — Cisco Network Infrastructure Upgrade RFP-2025-087', url: 'https://www.seminolecountyfl.gov/purchasing/bids/rfp-2025-087', query_used: 'Cisco Catalyst switches county purchase order Florida' },
+        { source: 'Web Search', title: 'Osceola County — IT Network Equipment Purchase Order #24-1129', url: 'https://www.osceola.org/procurement/awards/24-1129.html', query_used: 'network switches county contract award' },
+      ],
+      coop_search_links: [
+        { source: 'NASPO ValuePoint', url: 'https://www.naspovaluepoint.org/portfolio/?search=Cisco%20Catalyst', search_term: 'Cisco Catalyst' },
+        { source: 'GSA Advantage', url: 'https://www.gsaadvantage.gov/advantage/s/search.do?q=0:Cisco%20Catalyst&db=0&searchType=0', search_term: 'Cisco Catalyst' },
+        { source: 'Sourcewell', url: 'https://www.sourcewell-mn.gov/contract-search?q=Cisco%20Catalyst', search_term: 'Cisco Catalyst' },
+        { source: 'CDW-G', url: 'https://www.cdwg.com/search/?key=Cisco%20Catalyst', search_term: 'Cisco Catalyst' },
+        { source: 'FL State Term (FACTS)', url: 'https://vendor.myfloridamarketplace.com/search/bids/detail/Cisco%20Catalyst', search_term: 'Cisco Catalyst' },
+        { source: 'OMNIA Partners', url: 'https://www.omniapartners.com/search?q=Cisco%20Catalyst', search_term: 'Cisco Catalyst' },
+      ],
+      price_stats: { min: 29750, max: 55100, avg: 43440, median: 42850, count: 5 },
+      llm_analysis: {
+        price_assessment: 'The quoted price of $47,500 is approximately 9.3% above the average of comparable federal contracts ($43,440). However, the quote falls within the normal range for enterprise-grade Cisco Catalyst network infrastructure. CDW-G on GSA Schedule offers similar configurations at $38,200 (19.6% less). Consider negotiating or requesting pricing through NASPO ValuePoint or the Florida State Term Contract for potentially better rates.',
+        savings_opportunities: [
+          'CDW-G via GSA Schedule GS-35F-0119Y shows comparable Cisco Catalyst 9300 config at $38,200 — potential $9,300 savings (19.6%)',
+          'NASPO ValuePoint has active Cisco networking contracts — check for Florida-specific piggyback pricing',
+          'Seminole County recently awarded a similar Cisco network upgrade — their pricing may serve as a benchmark for negotiation',
+          'Florida State Term Contract (FACTS) may have pre-negotiated Cisco pricing below this quote',
+        ],
+        confidence: 'medium',
+      },
+      search_queries_used: ['Cisco Catalyst switches county purchase order Florida', 'network switches county contract award', 'enterprise network infrastructure government pricing'],
     }
   };
 }
@@ -2139,6 +2240,7 @@ function renderReviewContent(data, submissionId) {
   const guidance = data.guidance || {};
   const requiredForms = data.required_forms || [];
   const contractMatches = data.contract_matches || {};
+  const pricingIntel = data.pricing_intelligence || {};
 
   const criticalCount = issues.filter(i => i.severity === 'critical').length;
   const warningCount = issues.filter(i => i.severity === 'warning').length;
@@ -2266,6 +2368,9 @@ function renderReviewContent(data, submissionId) {
     <!-- Required Forms Panel -->
     ${renderRequiredFormsPanel(requiredForms)}
 
+    <!-- Pricing Intelligence -->
+    ${renderPricingIntelligencePanel(pricingIntel, submissionId)}
+
     <!-- Existing Contracts Found -->
     ${renderContractMatchesPanel(contractMatches)}
   `;
@@ -2379,6 +2484,206 @@ function renderContractMatchesPanel(matches) {
       </div>
     </div>
   `;
+}
+
+function renderPricingIntelligencePanel(pricing, submissionId) {
+  if (!pricing || pricing.error || (!pricing.comparable_contracts?.length && !pricing.llm_analysis && !pricing.coop_search_links?.length)) {
+    return '';
+  }
+
+  const analysis = pricing.llm_analysis || {};
+  const stats = pricing.price_stats || {};
+  const comparables = pricing.comparable_contracts || [];
+  const webResults = pricing.web_po_results || [];
+  const coopLinks = pricing.coop_search_links || [];
+  const confidence = analysis.confidence || 'low';
+  const confLabel = confidence === 'high' ? 'High Confidence' : confidence === 'medium' ? 'Moderate Confidence' : 'Low Confidence';
+  const confIcon = confidence === 'high' ? 'check-circle-2' : confidence === 'medium' ? 'alert-circle' : 'help-circle';
+  const savings = analysis.savings_opportunities || [];
+  const quoteAmt = pricing.quote_amount || 0;
+
+  // Build stats bar
+  let statsHtml = '';
+  if (stats.count) {
+    const vsAvg = quoteAmt && stats.avg ? ((quoteAmt - stats.avg) / stats.avg * 100).toFixed(1) : null;
+    const vsAvgLabel = vsAvg !== null ? (parseFloat(vsAvg) > 0 ? `${vsAvg}% above avg` : `${Math.abs(parseFloat(vsAvg))}% below avg`) : '';
+    const vsAvgColor = vsAvg !== null ? (parseFloat(vsAvg) > 5 ? 'var(--red)' : parseFloat(vsAvg) < -5 ? 'var(--green)' : 'var(--gray-600)') : '';
+
+    statsHtml = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(100px, 1fr));gap:var(--space-2);background:var(--gray-50);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-4);">
+        <div class="pricing-stat">
+          <div class="pricing-stat-value">${formatCurrency(stats.min)}</div>
+          <div class="pricing-stat-label">Lowest Found</div>
+        </div>
+        <div class="pricing-stat">
+          <div class="pricing-stat-value">${formatCurrency(stats.avg)}</div>
+          <div class="pricing-stat-label">Average</div>
+        </div>
+        <div class="pricing-stat">
+          <div class="pricing-stat-value">${formatCurrency(stats.median)}</div>
+          <div class="pricing-stat-label">Median</div>
+        </div>
+        <div class="pricing-stat">
+          <div class="pricing-stat-value">${formatCurrency(stats.max)}</div>
+          <div class="pricing-stat-label">Highest Found</div>
+        </div>
+        <div class="pricing-stat">
+          <div class="pricing-stat-value" style="color:var(--orange);">${formatCurrency(quoteAmt)}</div>
+          <div class="pricing-stat-label">This Quote</div>
+        </div>
+        ${vsAvg !== null ? `
+        <div class="pricing-stat">
+          <div class="pricing-stat-value" style="color:${vsAvgColor};">${vsAvgLabel}</div>
+          <div class="pricing-stat-label">vs. Average</div>
+        </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="review-panel" style="margin-top:var(--space-4);">
+      <div class="review-panel-header">
+        <div class="review-panel-title">
+          <i data-lucide="trending-down" style="width:18px;height:18px;"></i>
+          Pricing Intelligence
+        </div>
+        <div style="display:flex;gap:var(--space-2);align-items:center;">
+          <span class="badge ${confidence === 'high' ? 'badge-green' : confidence === 'medium' ? 'badge-amber' : 'badge-navy'}">
+            <i data-lucide="${confIcon}" style="width:11px;height:11px;"></i>
+            ${confLabel}
+          </span>
+          ${submissionId ? `
+            <button class="pricing-refresh-btn" onclick="refreshPricingIntel('${submissionId}')">
+              <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Re-scan
+            </button>
+          ` : ''}
+        </div>
+      </div>
+      <div class="review-panel-body" style="max-height:none;">
+
+        <!-- AI Assessment -->
+        ${analysis.price_assessment ? `
+          <div class="pricing-assessment ${confidence}">
+            <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
+              <i data-lucide="brain" style="width:16px;height:16px;color:var(--navy);"></i>
+              <span style="font-weight:600;font-size:0.85rem;color:var(--navy);">AI Price Assessment</span>
+            </div>
+            <div style="font-size:0.85rem;color:var(--gray-800);line-height:1.5;">${analysis.price_assessment}</div>
+          </div>
+        ` : ''}
+
+        <!-- Comparable Pricing Stats -->
+        ${statsHtml}
+
+        <!-- Savings Opportunities -->
+        ${savings.length > 0 ? `
+          <div style="margin-bottom:var(--space-4);">
+            <div style="font-size:0.82rem;font-weight:600;color:var(--gray-700);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-2);">
+              <i data-lucide="lightbulb" style="width:14px;height:14px;color:var(--orange);"></i>
+              Savings Opportunities
+            </div>
+            <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+              ${savings.map(s => `
+                <div style="padding:var(--space-2) var(--space-3);background:var(--green-light);border-radius:var(--radius-md);font-size:0.82rem;color:var(--gray-800);display:flex;align-items:flex-start;gap:var(--space-2);">
+                  <i data-lucide="arrow-down-circle" style="width:14px;height:14px;color:var(--green);flex-shrink:0;margin-top:2px;"></i>
+                  ${s}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Comparable Contracts -->
+        ${comparables.length > 0 ? `
+          <div style="margin-bottom:var(--space-4);">
+            <div style="font-size:0.82rem;font-weight:600;color:var(--gray-700);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-2);">
+              <i data-lucide="file-text" style="width:14px;height:14px;color:var(--navy);"></i>
+              Comparable Government Contracts (${comparables.length})
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:var(--space-2);">
+              ${comparables.slice(0, 8).map(c => {
+                const cAmt = c.amount || 0;
+                const diff = quoteAmt && cAmt ? ((quoteAmt - cAmt) / cAmt * 100).toFixed(0) : null;
+                const diffBadge = diff !== null ? (
+                  parseFloat(diff) > 10 ? `<span class="badge badge-red" style="font-size:0.65rem;">+${diff}%</span>` :
+                  parseFloat(diff) < -10 ? `<span class="badge badge-green" style="font-size:0.65rem;">${diff}%</span>` :
+                  `<span class="badge badge-navy" style="font-size:0.65rem;">~${diff}%</span>`
+                ) : '';
+                return `
+                  <div class="pricing-intel-card">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                      <div style="font-weight:600;font-size:0.82rem;color:var(--gray-900);max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.vendor_name || '—'}</div>
+                      ${diffBadge}
+                    </div>
+                    ${c.description ? `<div style="font-size:0.75rem;color:var(--gray-500);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.description}</div>` : ''}
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-1);">
+                      ${cAmt ? `<div style="font-size:0.82rem;font-weight:600;color:var(--navy);">${formatCurrency(cAmt)}</div>` : ''}
+                      ${c.agency ? `<div style="font-size:0.7rem;color:var(--gray-400);">${c.agency}</div>` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Web PO Results -->
+        ${webResults.length > 0 ? `
+          <div style="margin-bottom:var(--space-4);">
+            <div style="font-size:0.82rem;font-weight:600;color:var(--gray-700);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-2);">
+              <i data-lucide="globe" style="width:14px;height:14px;color:var(--navy);"></i>
+              Other Government POs Found
+            </div>
+            <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+              ${webResults.slice(0, 6).map(r => `
+                <a href="${r.url}" target="_blank" rel="noopener noreferrer" class="pricing-intel-card" style="text-decoration:none;display:block;">
+                  <div style="font-size:0.82rem;color:var(--navy);font-weight:500;">${r.title || r.url}</div>
+                  <div style="font-size:0.7rem;color:var(--gray-400);margin-top:2px;display:flex;align-items:center;gap:4px;">
+                    <i data-lucide="external-link" style="width:10px;height:10px;"></i>
+                    ${r.url.length > 60 ? r.url.substring(0, 60) + '...' : r.url}
+                  </div>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Search Cooperative Contracts -->
+        ${coopLinks.length > 0 ? `
+          <div style="border-top:1px solid var(--gray-200);padding-top:var(--space-3);">
+            <div style="font-size:0.82rem;font-weight:600;color:var(--gray-700);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-2);">
+              <i data-lucide="search" style="width:14px;height:14px;color:var(--navy);"></i>
+              Search Cooperative Contracts for "${pricing.product_searched ? pricing.product_searched.substring(0, 50) : ''}..."
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);">
+              ${coopLinks.map(l => `
+                <a href="${l.url}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline" style="font-size:0.78rem;">
+                  <i data-lucide="external-link" style="width:12px;height:12px;"></i> ${l.source}
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <div style="margin-top:var(--space-3);font-size:0.72rem;color:var(--gray-400);display:flex;align-items:center;gap:4px;">
+          <i data-lucide="info" style="width:10px;height:10px;"></i>
+          Pricing data sourced from USASpending.gov and web search. For fiscal review only — verify before citing.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function refreshPricingIntel(submissionId) {
+  showToast('info', 'Re-scanning', 'Searching for updated pricing intelligence&hellip;');
+  try {
+    const result = await apiPost(`/api/pricing-intelligence/${submissionId}`);
+    showToast('success', 'Pricing Updated', 'Pricing intelligence has been refreshed.');
+    renderReview(submissionId);
+  } catch (err) {
+    showToast('warning', 'Scan Unavailable', 'Could not reach the pricing intelligence API.');
+  }
 }
 
 function renderExtractedFields(extracted) {
