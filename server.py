@@ -2,7 +2,7 @@
 OCFL Procurement Purchase Request Portal — FastAPI Backend
 
 Provides endpoints for:
-  - Uploading vendor quotes (PDF/image), extracting fields via Claude AI
+  - Uploading vendor quotes (PDF/image), extracting fields via local LLM (Ollama)
   - Running compliance checks against Orange County procurement rules
   - Retrieving and listing submissions
   - Generating filled PDF procurement forms
@@ -19,7 +19,8 @@ from typing import Any, Optional
 
 import pdfplumber
 import uvicorn
-from anthropic import Anthropic
+import httpx
+import os
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -60,7 +61,13 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 UPLOADS_DIR.mkdir(exist_ok=True)
 FILLED_DIR.mkdir(exist_ok=True)
 
-client = Anthropic()
+# ---------------------------------------------------------------------------
+# LLM Configuration — uses Ollama (local) by default
+# Set OLLAMA_HOST to point to your Ollama server (default: http://localhost:11434)
+# Set LLM_MODEL to choose the model (default: llama3.1:70b)
+# ---------------------------------------------------------------------------
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+LLM_MODEL = os.environ.get("LLM_MODEL", "llama3.1:70b")
 
 # ---------------------------------------------------------------------------
 # JSON file "database"
@@ -194,53 +201,51 @@ def _extract_text_from_pdf(file_path: Path) -> str:
     return "\n\n".join(text_parts)
 
 
-def _call_claude_text(text: str) -> dict:
-    """Send extracted text to Claude for field extraction."""
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"{EXTRACTION_PROMPT}\n\n"
-                    f"--- DOCUMENT TEXT ---\n{text}\n--- END ---"
-                ),
-            }
-        ],
+def _call_llm_text(text: str) -> dict:
+    """Send extracted text to the local LLM for field extraction."""
+    prompt = f"{EXTRACTION_PROMPT}\n\n--- DOCUMENT TEXT ---\n{text}\n--- END ---"
+    response = httpx.post(
+        f"{OLLAMA_HOST}/api/chat",
+        json={
+            "model": LLM_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1, "num_predict": 4096},
+        },
+        timeout=120.0,
     )
-    return _parse_claude_response(message)
+    response.raise_for_status()
+    return _parse_llm_response(response.json())
 
 
-def _call_claude_image(file_path: Path, media_type: str) -> dict:
-    """Send an image directly to Claude using vision capability."""
+def _call_llm_image(file_path: Path, media_type: str) -> dict:
+    """Send an image to the local LLM using vision capability."""
     img_b64 = base64.b64encode(file_path.read_bytes()).decode()
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": img_b64,
-                        },
-                    },
-                    {"type": "text", "text": EXTRACTION_PROMPT},
-                ],
-            }
-        ],
+    response = httpx.post(
+        f"{OLLAMA_HOST}/api/chat",
+        json={
+            "model": LLM_MODEL,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": EXTRACTION_PROMPT,
+                    "images": [img_b64],
+                }
+            ],
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1, "num_predict": 4096},
+        },
+        timeout=120.0,
     )
-    return _parse_claude_response(message)
+    response.raise_for_status()
+    return _parse_llm_response(response.json())
 
 
-def _parse_claude_response(message: Any) -> dict:
-    """Parse Claude's response text into a dict."""
-    raw = message.content[0].text.strip()
+def _parse_llm_response(response_data: dict) -> dict:
+    """Parse the LLM response into a dict."""
+    raw = response_data["message"]["content"].strip()
     # Strip markdown code fences if present
     if raw.startswith("```"):
         lines = raw.split("\n")
@@ -1069,19 +1074,19 @@ async def upload_document(file: UploadFile = File(...)):
             text = _extract_text_from_pdf(file_path)
             if not text.strip():
                 # Fallback: if no text extracted, treat first page as image
-                raw_data = _call_claude_text(
+                raw_data = _call_llm_text(
                     "(No extractable text found in PDF. "
                     "The document may be a scanned image.)"
                 )
             else:
-                raw_data = _call_claude_text(text)
+                raw_data = _call_llm_text(text)
         else:
             media_map = {
                 ".jpg": "image/jpeg",
                 ".jpeg": "image/jpeg",
                 ".png": "image/png",
             }
-            raw_data = _call_claude_image(file_path, media_map[ext])
+            raw_data = _call_llm_image(file_path, media_map[ext])
     except Exception as exc:
         raise HTTPException(
             status_code=500,
