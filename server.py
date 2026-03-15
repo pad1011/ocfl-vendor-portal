@@ -116,6 +116,13 @@ class ExtractedData(BaseModel):
     insurance_mentioned: bool = False
     expiration_date: str = ""
     funding_type: str = "standard"
+    # --- Fields from MS Forms Purchase Request (user-entered) ---
+    accounting_line: str = ""
+    type_of_request: str = ""  # Hardware, Software/Licensing, Contract Labor, Other
+    future_cost_hardware: str = ""  # yes / no
+    future_cost_software: str = ""  # yes / no
+    renewal_cost_year1: str = ""  # estimated year one renewal cost
+    custodian_code_shipping_notes: str = ""  # custodian code, shipping location, other notes
 
 
 class ComplianceIssue(BaseModel):
@@ -1970,6 +1977,48 @@ async def post_submission_status(submission_id: str, req: StatusUpdateRequest):
     return {"submission_id": submission_id, "status": req.status}
 
 
+class PurchaseDetailsUpdate(BaseModel):
+    """Fields from the Purchase Details form (mirrors MS Forms fields)."""
+    accounting_line: str = ""
+    type_of_request: str = ""  # Hardware, Software/Licensing, Contract Labor, Other
+    future_cost_hardware: str = ""  # yes / no
+    future_cost_software: str = ""  # yes / no
+    renewal_cost_year1: str = ""
+    custodian_code_shipping_notes: str = ""
+    # Allow overriding AI-extracted fields too
+    requestor_name: str | None = None
+    department: str | None = None
+
+
+@app.put("/api/submissions/{submission_id}/details")
+async def update_purchase_details(submission_id: str, req: PurchaseDetailsUpdate):
+    """Save purchase detail fields (accounting line, type of request, etc.)."""
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    ed = record.get("extracted_data", {})
+    # Update the MS Forms fields
+    ed["accounting_line"] = req.accounting_line
+    ed["type_of_request"] = req.type_of_request
+    ed["future_cost_hardware"] = req.future_cost_hardware
+    ed["future_cost_software"] = req.future_cost_software
+    ed["renewal_cost_year1"] = req.renewal_cost_year1
+    ed["custodian_code_shipping_notes"] = req.custodian_code_shipping_notes
+    # Overrides for AI-extracted fields (if user corrects them)
+    if req.requestor_name is not None:
+        ed["requestor_name"] = req.requestor_name
+    if req.department is not None:
+        ed["department"] = req.department
+
+    record["extracted_data"] = ed
+    record["updated_at"] = datetime.now().isoformat()
+    _save_db(db)
+
+    return {"submission_id": submission_id, "message": "Purchase details saved"}
+
+
 @app.get("/api/submissions/export")
 async def export_submissions_csv():
     """Export all submissions as CSV for download."""
@@ -1988,6 +2037,9 @@ async def export_submissions_csv():
         "Description", "Department", "Requestor", "Contract Type",
         "Procurement Method", "Threshold Category", "Status",
         "Critical Issues", "Warnings", "Filename", "Funding Type",
+        "Accounting Line", "Type of Request", "Future Cost - Hardware",
+        "Future Cost - Software", "Year 1 Renewal Cost",
+        "Custodian Code / Shipping / Notes",
     ])
 
     for s in submissions:
@@ -2013,6 +2065,12 @@ async def export_submissions_csv():
             warning_count,
             s.get("filename", ""),
             ed.get("funding_type", "standard"),
+            ed.get("accounting_line", ""),
+            ed.get("type_of_request", ""),
+            ed.get("future_cost_hardware", ""),
+            ed.get("future_cost_software", ""),
+            ed.get("renewal_cost_year1", ""),
+            ed.get("custodian_code_shipping_notes", ""),
         ])
 
     output.seek(0)
