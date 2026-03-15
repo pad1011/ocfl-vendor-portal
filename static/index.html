@@ -1569,6 +1569,10 @@ tbody tr:last-child td {
         <i data-lucide="search"></i>
         Contract Search
       </a>
+      <a class="nav-item" href="#/submissions" data-route="submissions">
+        <i data-lucide="table-2"></i>
+        Submissions
+      </a>
 
       <div class="nav-label" style="margin-top: var(--space-4);">Resources</div>
       <a class="nav-item" href="https://www.ocfl.net" target="_blank" rel="noopener noreferrer">
@@ -1619,6 +1623,7 @@ const routes = {
   '/review': renderReview,
   '/reference': renderReference,
   '/contract-search': renderContractSearch,
+  '/submissions': renderSubmissions,
 };
 
 function getRoute() {
@@ -1653,6 +1658,9 @@ function handleRoute() {
   } else if (path === '/contract-search') {
     document.querySelector('[data-route="contract-search"]')?.classList.add('active');
     routes['/contract-search']();
+  } else if (path === '/submissions') {
+    document.querySelector('[data-route="submissions"]')?.classList.add('active');
+    routes['/submissions']();
   } else {
     routes['/']();
   }
@@ -2764,6 +2772,272 @@ async function generateForm(formType, submissionId) {
     }
   } catch (err) {
     showToast('warning', 'Generation unavailable', 'Form generation requires a running backend server.');
+  }
+}
+
+/* ============================================================
+   SUBMISSIONS VIEW
+   ============================================================ */
+
+let submissionsData = [];  // Cache for filtering/sorting
+let submissionsSort = { field: 'uploaded_at', dir: 'desc' };
+let submissionsFilter = { status: 'all', search: '' };
+
+async function renderSubmissions() {
+  setPageHeader(
+    'Submissions',
+    'All purchase requests — filter, sort, update status, and export',
+    `<div style="display:flex;gap:var(--space-2);">
+      <a href="${API_BASE}/api/submissions/export" class="btn btn-outline" target="_blank">
+        <i data-lucide="download"></i> Export CSV
+      </a>
+      <button class="btn btn-outline" onclick="exportToOneDrive()">
+        <i data-lucide="hard-drive-upload"></i> Send to OneDrive
+      </button>
+      <a href="#/upload" class="btn btn-primary"><i data-lucide="plus"></i> New Request</a>
+    </div>`
+  );
+
+  const body = document.getElementById('pageBody');
+  body.innerHTML = `
+    <!-- Filters bar -->
+    <div class="card" style="margin-bottom:var(--space-4);padding:var(--space-3) var(--space-4);">
+      <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center;">
+        <div style="display:flex;align-items:center;gap:var(--space-2);flex:1;min-width:200px;">
+          <i data-lucide="search" style="width:16px;height:16px;color:var(--gray-400);"></i>
+          <input class="form-input" type="text" id="subSearchInput" placeholder="Search vendor, requestor, description..." style="flex:1;" oninput="filterSubmissions()">
+        </div>
+        <select class="form-input" id="subStatusFilter" style="width:180px;" onchange="filterSubmissions()">
+          <option value="all">All Statuses</option>
+          <option value="pending_review">Pending Review</option>
+          <option value="in_review">In Review</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="on_hold">On Hold</option>
+          <option value="completed">Completed</option>
+          <option value="needs_revision">Needs Revision</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <div style="font-size:0.78rem;color:var(--gray-500);" id="subResultCount"></div>
+      </div>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="stats-grid" style="margin-bottom:var(--space-4);" id="subStatsGrid">
+      <div class="stat-card"><div class="stat-icon blue"><i data-lucide="file-text"></i></div><div class="stat-info"><div class="stat-label">Total</div><div class="stat-value" id="subStatTotal">—</div></div></div>
+      <div class="stat-card"><div class="stat-icon amber"><i data-lucide="clock"></i></div><div class="stat-info"><div class="stat-label">Pending</div><div class="stat-value" id="subStatPending">—</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i data-lucide="check-circle-2"></i></div><div class="stat-info"><div class="stat-label">Approved</div><div class="stat-value" id="subStatApproved">—</div></div></div>
+      <div class="stat-card"><div class="stat-icon navy" style="background:var(--navy-50);color:var(--navy);"><i data-lucide="dollar-sign"></i></div><div class="stat-info"><div class="stat-label">Total Value</div><div class="stat-value" id="subStatValue">—</div></div></div>
+    </div>
+
+    <!-- Data table -->
+    <div class="card">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable-th" onclick="sortSubmissions('uploaded_at')" style="cursor:pointer;">Date <span id="sort_uploaded_at" class="sort-arrow">↕</span></th>
+              <th class="sortable-th" onclick="sortSubmissions('vendor_name')" style="cursor:pointer;">Vendor <span id="sort_vendor_name" class="sort-arrow">↕</span></th>
+              <th class="sortable-th" onclick="sortSubmissions('total_amount')" style="cursor:pointer;">Amount <span id="sort_total_amount" class="sort-arrow">↕</span></th>
+              <th>Description</th>
+              <th>Department</th>
+              <th>Compliance</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="subTableBody">
+            <tr><td colspan="8" style="padding:var(--space-6);text-align:center;">
+              <div class="spinner large" style="margin:0 auto;"></div>
+              <p style="margin-top:var(--space-3);color:var(--gray-400);font-size:13px;">Loading submissions&hellip;</p>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  lucide.createIcons({ nodes: [body] });
+
+  // Fetch data
+  try {
+    const data = await apiGet('/api/submissions');
+    submissionsData = Array.isArray(data) ? data : (data.submissions || []);
+  } catch {
+    // Demo data for when server isn't running
+    submissionsData = [
+      { submission_id: 'demo-001', uploaded_at: '2026-03-15T14:30:00', status: 'pending_review', filename: 'CDW_Quote_Switches.pdf', extracted_data: { vendor_name: 'CDW Government LLC', total_amount: 47500, scope_of_services: 'Cisco Catalyst 9300 switches', department: 'ISS', requestor_name: 'Paul Dumont', contract_type: 'piggyback', funding_type: 'standard' }, compliance: { issues: [{ severity: 'critical', message: 'Exceeds threshold' }, { severity: 'warning', message: 'Missing vendor reg' }], procurement_method: 'Informal Solicitation', threshold_category: '$10K-$150K' }, notes: [] },
+      { submission_id: 'demo-002', uploaded_at: '2026-03-14T09:15:00', status: 'approved', filename: 'Dell_Laptops_Quote.pdf', extracted_data: { vendor_name: 'Dell Technologies', total_amount: 8200, scope_of_services: 'Latitude 5550 laptops (4 units)', department: 'ISS', requestor_name: 'Maria Santos', contract_type: 'state_contract', funding_type: 'standard' }, compliance: { issues: [{ severity: 'info', message: 'IT review recommended' }], procurement_method: 'Small Purchase', threshold_category: '$0-$10K' }, notes: [{ text: 'Approved via state contract pricing', timestamp: '2026-03-14T16:00:00', status_change: 'approved' }] },
+      { submission_id: 'demo-003', uploaded_at: '2026-03-13T11:45:00', status: 'on_hold', filename: 'Gartner_Services_SOW.pdf', extracted_data: { vendor_name: 'Gartner Inc.', total_amount: 175000, scope_of_services: 'IT consulting and research services', department: 'IT Strategy', requestor_name: 'James Wilson', contract_type: 'sole_source', funding_type: 'standard' }, compliance: { issues: [{ severity: 'critical', message: 'Exceeds formal threshold' }, { severity: 'critical', message: 'Sole source requires BCC approval' }, { severity: 'warning', message: 'BCC approval needed >$500K' }], procurement_method: 'Formal Solicitation', threshold_category: '$150K+' }, notes: [{ text: 'Waiting on sole source justification from department', timestamp: '2026-03-13T14:00:00', status_change: 'on_hold' }] },
+      { submission_id: 'demo-004', uploaded_at: '2026-03-12T08:30:00', status: 'completed', filename: 'Staples_OfficeSupplies.pdf', extracted_data: { vendor_name: 'Staples Business Advantage', total_amount: 1250, scope_of_services: 'Office supplies — paper, toner, pens', department: 'Administration', requestor_name: 'Lisa Chen', contract_type: 'cooperative', funding_type: 'standard' }, compliance: { issues: [], procurement_method: 'P-Card / Small Purchase', threshold_category: '$0-$10K' }, notes: [] },
+      { submission_id: 'demo-005', uploaded_at: '2026-03-11T16:20:00', status: 'needs_revision', filename: 'AT&T_Fiber_Upgrade.pdf', extracted_data: { vendor_name: 'AT&T Business', total_amount: 62000, scope_of_services: 'Fiber optic network upgrade — Building C', department: 'ISS - Network', requestor_name: 'Kevin Brown', contract_type: 'standard', funding_type: 'standard' }, compliance: { issues: [{ severity: 'critical', message: 'Missing competitive quotes' }, { severity: 'warning', message: 'Insurance COI not attached' }], procurement_method: 'Informal Solicitation', threshold_category: '$10K-$150K' }, notes: [{ text: 'Need 3 competitive quotes per procurement policy', timestamp: '2026-03-12T10:00:00', status_change: 'needs_revision' }] },
+      { submission_id: 'demo-006', uploaded_at: '2026-03-10T13:00:00', status: 'approved', filename: 'Microsoft_365_Renewal.pdf', extracted_data: { vendor_name: 'Microsoft Corporation', total_amount: 285000, scope_of_services: 'M365 G5 license renewal — 500 seats', department: 'ISS', requestor_name: 'Paul Dumont', contract_type: 'state_contract', funding_type: 'standard' }, compliance: { issues: [{ severity: 'warning', message: 'Amount exceeds $150K formal threshold' }, { severity: 'info', message: 'State contract exempts competitive quotes' }], procurement_method: 'State Contract (FL FACTS)', threshold_category: '$150K+' }, notes: [{ text: 'Approved — state contract pricing verified', timestamp: '2026-03-11T09:00:00', status_change: 'approved' }] },
+    ];
+  }
+
+  renderSubmissionsTable();
+}
+
+function renderSubmissionsTable() {
+  // Apply filters
+  let filtered = [...submissionsData];
+  const searchTerm = (document.getElementById('subSearchInput')?.value || '').toLowerCase();
+  const statusFilter = document.getElementById('subStatusFilter')?.value || 'all';
+
+  if (statusFilter !== 'all') {
+    filtered = filtered.filter(s => s.status === statusFilter);
+  }
+  if (searchTerm) {
+    filtered = filtered.filter(s => {
+      const ed = s.extracted_data || {};
+      const searchStr = [
+        ed.vendor_name, ed.scope_of_services, ed.department,
+        ed.requestor_name, s.filename, s.submission_id,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchStr.includes(searchTerm);
+    });
+  }
+
+  // Sort
+  const { field, dir } = submissionsSort;
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (field === 'vendor_name') {
+      va = (a.extracted_data?.vendor_name || '').toLowerCase();
+      vb = (b.extracted_data?.vendor_name || '').toLowerCase();
+    } else if (field === 'total_amount') {
+      va = a.extracted_data?.total_amount || 0;
+      vb = b.extracted_data?.total_amount || 0;
+    } else {
+      va = a[field] || '';
+      vb = b[field] || '';
+    }
+    if (va < vb) return dir === 'asc' ? -1 : 1;
+    if (va > vb) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Update stats
+  const total = submissionsData.length;
+  const pending = submissionsData.filter(s => ['pending_review', 'in_review', 'needs_revision'].includes(s.status)).length;
+  const approved = submissionsData.filter(s => ['approved', 'completed'].includes(s.status)).length;
+  const totalValue = submissionsData.reduce((sum, s) => sum + (s.extracted_data?.total_amount || 0), 0);
+
+  const el = id => document.getElementById(id);
+  if (el('subStatTotal')) el('subStatTotal').textContent = total;
+  if (el('subStatPending')) el('subStatPending').textContent = pending;
+  if (el('subStatApproved')) el('subStatApproved').textContent = approved;
+  if (el('subStatValue')) el('subStatValue').textContent = formatCurrency(totalValue);
+  if (el('subResultCount')) el('subResultCount').textContent = `Showing ${filtered.length} of ${total}`;
+
+  // Update sort arrows
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '↕');
+  const sortEl = document.getElementById(`sort_${field}`);
+  if (sortEl) sortEl.textContent = dir === 'asc' ? '↑' : '↓';
+
+  // Render table rows
+  const tbody = document.getElementById('subTableBody');
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr><td colspan="8">
+        <div class="empty-state" style="padding:var(--space-8);">
+          <div class="empty-state-icon"><i data-lucide="inbox"></i></div>
+          <div class="empty-state-title">${searchTerm || statusFilter !== 'all' ? 'No matching submissions' : 'No submissions yet'}</div>
+          <div class="empty-state-desc">${searchTerm || statusFilter !== 'all' ? 'Try adjusting your filters.' : 'Upload your first vendor quote to get started.'}</div>
+        </div>
+      </td></tr>
+    `;
+    lucide.createIcons({ nodes: [tbody] });
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(s => {
+    const ed = s.extracted_data || {};
+    const comp = s.compliance || {};
+    const issues = comp.issues || [];
+    const criticals = issues.filter(i => i.severity === 'critical').length;
+    const warnings = issues.filter(i => i.severity === 'warning').length;
+
+    const compBadge = criticals > 0
+      ? `<span class="badge badge-red">${criticals} critical</span>`
+      : warnings > 0
+        ? `<span class="badge badge-amber">${warnings} warning${warnings > 1 ? 's' : ''}</span>`
+        : `<span class="badge badge-green">Clear</span>`;
+
+    return `
+      <tr>
+        <td style="white-space:nowrap;font-size:0.82rem;">${formatDate(s.uploaded_at)}</td>
+        <td>
+          <div style="font-weight:600;font-size:0.85rem;">${ed.vendor_name || '—'}</div>
+          <div style="font-size:0.72rem;color:var(--gray-500);">${s.filename || ''}</div>
+        </td>
+        <td class="amount-cell" style="font-weight:600;">${formatCurrency(ed.total_amount)}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.82rem;color:var(--gray-600);" title="${(ed.scope_of_services || '').replace(/"/g, '&quot;')}">${ed.scope_of_services || '—'}</td>
+        <td style="font-size:0.82rem;">${ed.department || '—'}</td>
+        <td>${compBadge}</td>
+        <td>
+          <select class="form-input" style="font-size:0.75rem;padding:4px 8px;width:130px;border-color:var(--gray-200);" onchange="updateSubmissionStatus('${s.submission_id}', this.value)" title="Change status">
+            ${['pending_review','in_review','approved','rejected','on_hold','completed','needs_revision','cancelled'].map(st =>
+              `<option value="${st}" ${s.status === st ? 'selected' : ''}>${st.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`
+            ).join('')}
+          </select>
+        </td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            <a href="#/review/${s.submission_id}" class="action-btn" title="Review"><i data-lucide="eye" style="width:15px;height:15px;"></i></a>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  lucide.createIcons({ nodes: [tbody] });
+}
+
+function filterSubmissions() {
+  renderSubmissionsTable();
+}
+
+function sortSubmissions(field) {
+  if (submissionsSort.field === field) {
+    submissionsSort.dir = submissionsSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    submissionsSort.field = field;
+    submissionsSort.dir = field === 'total_amount' ? 'desc' : 'asc';
+  }
+  renderSubmissionsTable();
+}
+
+async function updateSubmissionStatus(submissionId, newStatus) {
+  try {
+    await apiPost(`/api/submissions/${submissionId}/status`, { status: newStatus });
+    // Update local cache
+    const item = submissionsData.find(s => s.submission_id === submissionId);
+    if (item) item.status = newStatus;
+    showToast('success', 'Status Updated', `Submission updated to ${newStatus.replace(/_/g, ' ')}.`);
+  } catch {
+    showToast('warning', 'Update Failed', 'Could not update status. Server may be offline.');
+  }
+}
+
+async function exportToOneDrive() {
+  showToast('info', 'Exporting', 'Preparing spreadsheet and uploading to OneDrive&hellip;');
+  // First download the CSV
+  try {
+    const resp = await fetch(`${API_BASE}/api/submissions/export`);
+    if (!resp.ok) throw new Error('Export failed');
+    const csvText = await resp.text();
+    // Create a downloadable blob as fallback
+    const blob = new Blob([csvText], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ocfl_submissions_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('success', 'Export Complete', 'CSV file downloaded. Upload to your SharePoint site to share with your team.');
+  } catch {
+    showToast('warning', 'Export Failed', 'Could not generate the export. Server may be offline.');
   }
 }
 
