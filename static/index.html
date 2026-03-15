@@ -2532,6 +2532,14 @@ function renderReference() {
         <i data-lucide="search"></i>
         <input class="form-input" type="text" placeholder="Search exhibits&hellip;" oninput="filterExhibits(this.value)">
       </div>
+      <div id="exhibitFavorites" class="hidden" style="margin-bottom:var(--space-4);">
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3);">
+          <i data-lucide="star" style="width:16px;height:16px;color:var(--orange);fill:var(--orange);"></i>
+          <span style="font-weight:600;color:var(--navy);font-size:14px;">Favorites</span>
+        </div>
+        <div class="exhibits-list" id="exhibitFavList"></div>
+        <hr style="border:none;border-top:1px solid var(--gray-200);margin-top:var(--space-4);">
+      </div>
       <div class="exhibits-list" id="exhibitsList">
         ${renderExhibitsList()}
       </div>
@@ -2607,6 +2615,9 @@ function showRefSection(section, btn) {
   // Show selected
   document.getElementById(`refSection-${section}`).classList.remove('hidden');
   btn.classList.add('active');
+
+  // Refresh exhibits favorites when switching to that tab
+  if (section === 'exhibits') refreshExhibits();
 }
 
 function filterThresholds(query) {
@@ -2833,65 +2844,118 @@ function renderContractSources(sources) {
   lucide.createIcons({ nodes: [el] });
 }
 
-function renderExhibitsList() {
-  const exhibits = [
-    { num: 1, title: 'Emergency Procurement Justification' },
-    { num: 2, title: 'Sole Source Procurement Justification' },
-    { num: 3, title: 'Price Negotiation Memorandum' },
-    { num: 4, title: 'Term Contract Performance Evaluation' },
-    { num: 5, title: 'Construction Project Information Sheet' },
-    { num: 6, title: 'RFP Project Information Sheet — Professional Services' },
-    { num: 7, title: 'Performance Evaluation — Construction Contracts' },
-    { num: 8, title: 'Performance Evaluation — Professional Services' },
-    { num: 9, title: 'Report of Unsatisfactory Materials and/or Services' },
-    { num: 10, title: 'Sample Scope of Services / Scope of Work Formats' },
-    { num: 11, title: 'Change Order Request Form' },
-    { num: 12, title: 'Procurement Card Application' },
-    { num: 13, title: 'Travel Card Application' },
-    { num: 14, title: 'Procurement Card Termination Form' },
-    { num: 15, title: 'Travel Card Termination Form' },
-    { num: 16, title: 'Procurement Card Monthly Purchase Log' },
-    { num: 17, title: 'Travel Card Monthly Purchase Log' },
-    { num: 18, title: 'Notification of Lost or Stolen Procurement Card' },
-    { num: 19, title: 'Notification of Lost or Stolen Travel Card' },
-    { num: 20, title: 'Procurement Cardholder Agreement & Acknowledgement' },
-    { num: 21, title: 'Travel Cardholder Agreement & Acknowledgement' },
-    { num: 22, title: 'Procurement Card Representative Application' },
-    { num: 23, title: 'Travel Card Representative Application' },
-    { num: 24, title: 'Procurement Card Application for Name Change' },
-    { num: 25, title: 'Travel Card Application for Name Change' },
-    { num: 26, title: 'Procurement Card Exception Request' },
-    { num: 27, title: 'Protest Hearing Form' },
-    { num: 28, title: 'Format for Purchase Orders — Tear Downs and Quotes' },
-    { num: 29, title: 'Procurement Thresholds' },
-    { num: 30, title: 'Purchase Order/Contract Documentation of Exemption' },
-    { num: 31, title: 'Alternate Contract Source Approval Form' },
-    { num: 32, title: 'Piggyback Requisition Checklist' },
-    { num: 33, title: 'Short Form Request for Quotations' },
-    { num: 34, title: 'Project Information Sheet — Request for Solicitation or Contract' },
-    { num: 35, title: 'Solicitation, Contract and Change Order Independent Estimate' },
-    { num: 36, title: 'Federal Compliance Documentation Form' },
-    { num: 37, title: 'Guideline for Standard Orange County Procurement Thresholds' },
-    { num: 38, title: 'Guideline for Federal Funding Procurement Thresholds' },
-    { num: 39, title: 'Sample Emergency Field Purchase Order' },
-    { num: 40, title: 'Department Expediting Form with M/WBE' },
-    { num: 41, title: 'Direct Award to Orange County Certified M/WBE Recommendation' },
-    { num: 42, title: 'Request to Add a Sub-Consultant (800/900/Task Authorization)' },
-  ];
+const EXHIBITS_DATA = [
+  { num: 1, title: 'Emergency Procurement Justification' },
+  { num: 2, title: 'Sole Source Procurement Justification' },
+  { num: 3, title: 'Price Negotiation Memorandum' },
+  { num: 4, title: 'Term Contract Performance Evaluation' },
+  { num: 5, title: 'Construction Project Information Sheet' },
+  { num: 6, title: 'RFP Project Information Sheet — Professional Services' },
+  { num: 7, title: 'Performance Evaluation — Construction Contracts' },
+  { num: 8, title: 'Performance Evaluation — Professional Services' },
+  { num: 9, title: 'Report of Unsatisfactory Materials and/or Services' },
+  { num: 10, title: 'Sample Scope of Services / Scope of Work Formats' },
+  { num: 11, title: 'Change Order Request Form' },
+  { num: 12, title: 'Procurement Card Application' },
+  { num: 13, title: 'Travel Card Application' },
+  { num: 14, title: 'Procurement Card Termination Form' },
+  { num: 15, title: 'Travel Card Termination Form' },
+  { num: 16, title: 'Procurement Card Monthly Purchase Log' },
+  { num: 17, title: 'Travel Card Monthly Purchase Log' },
+  { num: 18, title: 'Notification of Lost or Stolen Procurement Card' },
+  { num: 19, title: 'Notification of Lost or Stolen Travel Card' },
+  { num: 20, title: 'Procurement Cardholder Agreement & Acknowledgement' },
+  { num: 21, title: 'Travel Cardholder Agreement & Acknowledgement' },
+  { num: 22, title: 'Procurement Card Representative Application' },
+  { num: 23, title: 'Travel Card Representative Application' },
+  { num: 24, title: 'Procurement Card Application for Name Change' },
+  { num: 25, title: 'Travel Card Application for Name Change' },
+  { num: 26, title: 'Procurement Card Exception Request' },
+  { num: 27, title: 'Protest Hearing Form' },
+  { num: 28, title: 'Format for Purchase Orders — Tear Downs and Quotes' },
+  { num: 29, title: 'Procurement Thresholds' },
+  { num: 30, title: 'Purchase Order/Contract Documentation of Exemption' },
+  { num: 31, title: 'Alternate Contract Source Approval Form' },
+  { num: 32, title: 'Piggyback Requisition Checklist' },
+  { num: 33, title: 'Short Form Request for Quotations' },
+  { num: 34, title: 'Project Information Sheet — Request for Solicitation or Contract' },
+  { num: 35, title: 'Solicitation, Contract and Change Order Independent Estimate' },
+  { num: 36, title: 'Federal Compliance Documentation Form' },
+  { num: 37, title: 'Guideline for Standard Orange County Procurement Thresholds' },
+  { num: 38, title: 'Guideline for Federal Funding Procurement Thresholds' },
+  { num: 39, title: 'Sample Emergency Field Purchase Order' },
+  { num: 40, title: 'Department Expediting Form with M/WBE' },
+  { num: 41, title: 'Direct Award to Orange County Certified M/WBE Recommendation' },
+  { num: 42, title: 'Request to Add a Sub-Consultant (800/900/Task Authorization)' },
+];
 
-  return exhibits.map(e => {
-    const pad = String(e.num).padStart(2, '0');
-    return `
-    <a href="/static/exhibits/exhibit-${pad}.pdf" target="_blank" class="exhibit-item" style="text-decoration:none;color:inherit;cursor:pointer;transition:box-shadow 0.15s ease;">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <div class="exhibit-num">Exhibit ${e.num}</div>
-          <div class="exhibit-title">${e.title}</div>
+function getExhibitFavorites() {
+  try { return JSON.parse(localStorage.getItem('ocfl_exhibit_favs') || '[]'); }
+  catch { return []; }
+}
+
+function toggleExhibitFavorite(num, event) {
+  event.preventDefault();
+  event.stopPropagation();
+  let favs = getExhibitFavorites();
+  if (favs.includes(num)) {
+    favs = favs.filter(n => n !== num);
+  } else {
+    favs.push(num);
+  }
+  localStorage.setItem('ocfl_exhibit_favs', JSON.stringify(favs));
+  refreshExhibits();
+}
+
+function renderExhibitCard(e, isFav) {
+  const pad = String(e.num).padStart(2, '0');
+  const starFill = isFav ? 'fill:var(--orange);color:var(--orange);' : 'fill:none;color:var(--gray-400);';
+  return `
+    <div class="exhibit-item" style="position:relative;" data-exhibit="${e.num}">
+      <a href="/static/exhibits/exhibit-${pad}.pdf" target="_blank" style="text-decoration:none;color:inherit;display:block;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-2);">
+          <div style="flex:1;min-width:0;">
+            <div class="exhibit-num">Exhibit ${e.num}</div>
+            <div class="exhibit-title">${e.title}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:2px;">
+            <i data-lucide="download" style="width:15px;height:15px;color:var(--gray-400);"></i>
+          </div>
         </div>
-        <i data-lucide="download" style="width:16px;height:16px;color:var(--orange-500);flex-shrink:0;"></i>
-      </div>
-    </a>
-  `}).join('');
+      </a>
+      <button onclick="toggleExhibitFavorite(${e.num}, event)" title="${isFav ? 'Remove from favorites' : 'Add to favorites'}" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;padding:4px;border-radius:4px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background='none'">
+        <i data-lucide="star" style="width:15px;height:15px;${starFill}transition:all 0.15s ease;"></i>
+      </button>
+    </div>
+  `;
+}
+
+function refreshExhibits() {
+  const favs = getExhibitFavorites();
+  const favSection = document.getElementById('exhibitFavorites');
+  const favList = document.getElementById('exhibitFavList');
+  const mainList = document.getElementById('exhibitsList');
+
+  // Render favorites section
+  if (favs.length > 0) {
+    favSection.classList.remove('hidden');
+    const favExhibits = EXHIBITS_DATA.filter(e => favs.includes(e.num));
+    favList.innerHTML = favExhibits.map(e => renderExhibitCard(e, true)).join('');
+  } else {
+    favSection.classList.add('hidden');
+  }
+
+  // Render main list
+  mainList.innerHTML = EXHIBITS_DATA.map(e => renderExhibitCard(e, favs.includes(e.num))).join('');
+
+  // Re-render Lucide icons
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderExhibitsList() {
+  // Initial render — will be refreshed by refreshExhibits on page load
+  const favs = getExhibitFavorites();
+  return EXHIBITS_DATA.map(e => renderExhibitCard(e, favs.includes(e.num))).join('');
 }
 </script>
 </body>
