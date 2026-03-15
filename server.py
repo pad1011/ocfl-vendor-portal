@@ -1838,16 +1838,23 @@ async def upload_document(file: UploadFile = File(...)):
 
     # Persist
     db = _load_db()
+    # Determine initial status from compliance results
+    critical_issues = [i for i in compliance.issues if i.severity == "critical"]
+    initial_status = "pending_review" if critical_issues else "pending_review"
+
     record = {
         "submission_id": submission_id,
         "filename": file.filename,
         "saved_as": safe_filename,
         "uploaded_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "status": initial_status,
         "extracted_data": extracted.model_dump(),
         "compliance": compliance.model_dump(),
         "required_forms": required_forms,
         "contract_matches": contract_matches,
         "pricing_intelligence": pricing_intelligence,
+        "notes": [],
     }
     db["submissions"][submission_id] = record
     _save_db(db)
@@ -1898,6 +1905,122 @@ async def list_submissions():
     submissions = list(db.get("submissions", {}).values())
     submissions.sort(key=lambda s: s.get("uploaded_at", ""), reverse=True)
     return {"submissions": submissions, "total": len(submissions)}
+
+
+@app.patch("/api/submissions/{submission_id}/status")
+async def update_submission_status(submission_id: str):
+    """Update the status of a submission (e.g., pending, approved, rejected, on_hold)."""
+    import json as _json
+    from starlette.requests import Request
+    from fastapi import Request as FRequest
+
+    # Read raw body since we just need a simple field
+    # (Using inline approach to avoid adding another Pydantic model)
+    request = app.state  # We'll use the dependency injection below instead
+    return {"error": "Use the proper endpoint"}
+
+
+# Proper status update with body parsing
+@app.put("/api/submissions/{submission_id}/status")
+async def set_submission_status(submission_id: str, body: dict = None):
+    """Set submission status. Body: {"status": "approved"}"""
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    return {"error": "Use POST endpoint"}
+
+
+class StatusUpdateRequest(BaseModel):
+    status: str  # pending_review, approved, rejected, on_hold, completed
+    note: str = ""
+
+
+@app.post("/api/submissions/{submission_id}/status")
+async def post_submission_status(submission_id: str, req: StatusUpdateRequest):
+    """Update submission status and optional note."""
+    valid_statuses = {
+        "pending_review", "in_review", "approved", "rejected",
+        "on_hold", "completed", "cancelled", "needs_revision",
+    }
+    if req.status not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status '{req.status}'. Valid: {', '.join(sorted(valid_statuses))}"
+        )
+
+    db = _load_db()
+    record = db.get("submissions", {}).get(submission_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    record["status"] = req.status
+    if req.note:
+        if "notes" not in record:
+            record["notes"] = []
+        record["notes"].append({
+            "text": req.note,
+            "timestamp": datetime.now().isoformat(),
+            "status_change": req.status,
+        })
+    record["updated_at"] = datetime.now().isoformat()
+    _save_db(db)
+
+    return {"submission_id": submission_id, "status": req.status}
+
+
+@app.get("/api/submissions/export")
+async def export_submissions_csv():
+    """Export all submissions as CSV for download."""
+    import csv
+    import io
+    from starlette.responses import StreamingResponse
+
+    db = _load_db()
+    submissions = list(db.get("submissions", {}).values())
+    submissions.sort(key=lambda s: s.get("uploaded_at", ""), reverse=True)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Submission ID", "Date", "Vendor Name", "Amount",
+        "Description", "Department", "Requestor", "Contract Type",
+        "Procurement Method", "Threshold Category", "Status",
+        "Critical Issues", "Warnings", "Filename", "Funding Type",
+    ])
+
+    for s in submissions:
+        ed = s.get("extracted_data", {})
+        comp = s.get("compliance", {})
+        issues = comp.get("issues", [])
+        critical_count = len([i for i in issues if i.get("severity") == "critical"])
+        warning_count = len([i for i in issues if i.get("severity") == "warning"])
+
+        writer.writerow([
+            s.get("submission_id", ""),
+            s.get("uploaded_at", "")[:10] if s.get("uploaded_at") else "",
+            ed.get("vendor_name", ""),
+            ed.get("total_amount", 0),
+            ed.get("scope_of_services", ""),
+            ed.get("department", ""),
+            ed.get("requestor_name", ""),
+            ed.get("contract_type", ""),
+            comp.get("procurement_method", ""),
+            comp.get("threshold_category", ""),
+            s.get("status", "pending_review"),
+            critical_count,
+            warning_count,
+            s.get("filename", ""),
+            ed.get("funding_type", "standard"),
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=ocfl_submissions_{date.today().isoformat()}.csv"},
+    )
 
 
 @app.post("/api/generate-form")
