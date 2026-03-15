@@ -2153,7 +2153,7 @@ async function renderReview(submissionId) {
   `;
 
   try {
-    const data = await apiGet(`/api/submissions/${submissionId}`);
+    const data = await apiGet(`/api/submission/${submissionId}`);
     renderReviewContent(data, submissionId);
   } catch (err) {
     // Show a demo/fallback review
@@ -2267,7 +2267,7 @@ function renderReviewContent(data, submissionId) {
             <i data-lucide="scan-text" style="width:18px;height:18px;"></i>
             Extracted Data
           </div>
-          <span class="badge badge-navy">${Object.keys(extracted).length} fields</span>
+          <span class="badge badge-navy">${Object.keys(extracted).filter(k => !['accounting_line','type_of_request','future_cost_hardware','future_cost_software','renewal_cost_year1','custodian_code_shipping_notes','insurance_mentioned'].includes(k)).length} fields</span>
         </div>
         <div class="review-panel-body" id="extractedFields">
           ${renderExtractedFields(extracted)}
@@ -2373,6 +2373,9 @@ function renderReviewContent(data, submissionId) {
       </div>
     </div>
 
+    <!-- Purchase Details Form (mirrors MS Forms fields) -->
+    ${renderPurchaseDetailsForm(extracted, submissionId)}
+
     <!-- Required Forms Panel -->
     ${renderRequiredFormsPanel(requiredForms)}
 
@@ -2383,6 +2386,155 @@ function renderReviewContent(data, submissionId) {
     ${renderContractMatchesPanel(contractMatches)}
   `;
   lucide.createIcons({ nodes: [body] });
+}
+
+function renderPurchaseDetailsForm(extracted, submissionId) {
+  const acctLine = extracted.accounting_line || '';
+  const typeReq = extracted.type_of_request || '';
+  const fcHW = extracted.future_cost_hardware || '';
+  const fcSW = extracted.future_cost_software || '';
+  const renewalCost = extracted.renewal_cost_year1 || '';
+  const custNotes = extracted.custodian_code_shipping_notes || '';
+  const reqName = extracted.requestor_name || '';
+  const dept = extracted.department || '';
+
+  return `
+    <div class="review-panel" style="margin-top:var(--space-4);">
+      <div class="review-panel-header">
+        <div class="review-panel-title">
+          <i data-lucide="clipboard-pen" style="width:18px;height:18px;"></i>
+          Purchase Details
+        </div>
+        <span class="badge badge-amber" style="font-size:0.7rem;">Requestor completes</span>
+      </div>
+      <div class="review-panel-body">
+        <p style="font-size:0.82rem;color:var(--gray-500);margin-bottom:var(--space-4);">These fields are filled in by the requestor to complete the purchase request. They mirror the ISS Purchase Request Form.</p>
+
+        <form id="purchaseDetailsForm" onsubmit="savePurchaseDetails(event, '${submissionId}')" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);">
+
+          <!-- Requestor Name -->
+          <div class="form-group">
+            <label class="form-label">Requestor Name <span style="color:var(--red);">*</span></label>
+            <input class="form-input" type="text" id="pdRequestorName" value="${reqName}" placeholder="Enter requestor name" required>
+          </div>
+
+          <!-- Department -->
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <input class="form-input" type="text" id="pdDepartment" value="${dept}" placeholder="e.g. ISS Department">
+          </div>
+
+          <!-- Accounting Line -->
+          <div class="form-group">
+            <label class="form-label">Accounting Line <span style="color:var(--red);">*</span></label>
+            <input class="form-input" type="text" id="pdAccountingLine" value="${acctLine}" placeholder="Enter accounting line" required>
+          </div>
+
+          <!-- Type of Request -->
+          <div class="form-group">
+            <label class="form-label">Type of Request <span style="color:var(--red);">*</span></label>
+            <select class="form-input" id="pdTypeOfRequest" required>
+              <option value="" ${!typeReq ? 'selected' : ''}>Select type...</option>
+              <option value="Hardware" ${typeReq === 'Hardware' ? 'selected' : ''}>Hardware</option>
+              <option value="Software/Licensing" ${typeReq === 'Software/Licensing' ? 'selected' : ''}>Software / Licensing</option>
+              <option value="Contract Labor" ${typeReq === 'Contract Labor' ? 'selected' : ''}>Contract Labor</option>
+              <option value="Other" ${typeReq === 'Other' ? 'selected' : ''}>Other</option>
+            </select>
+          </div>
+
+          <!-- Future Cost - Hardware -->
+          <div class="form-group">
+            <label class="form-label">Future Cost — Hardware <span style="color:var(--red);">*</span></label>
+            <div style="display:flex;gap:var(--space-2);margin-top:var(--space-1);">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:var(--space-2) var(--space-3);border:1px solid var(--gray-200);border-radius:var(--radius-md);flex:1;justify-content:center;font-size:0.85rem;font-weight:500;transition:all 0.15s ease;" class="radio-btn">
+                <input type="radio" name="fcHardware" value="yes" ${fcHW === 'yes' ? 'checked' : ''} style="accent-color:var(--navy);"> Yes
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:var(--space-2) var(--space-3);border:1px solid var(--gray-200);border-radius:var(--radius-md);flex:1;justify-content:center;font-size:0.85rem;font-weight:500;transition:all 0.15s ease;" class="radio-btn">
+                <input type="radio" name="fcHardware" value="no" ${fcHW === 'no' ? 'checked' : ''} style="accent-color:var(--navy);"> No
+              </label>
+            </div>
+          </div>
+
+          <!-- Future Cost - Software -->
+          <div class="form-group">
+            <label class="form-label">Future Cost — Software <span style="color:var(--red);">*</span></label>
+            <div style="display:flex;gap:var(--space-2);margin-top:var(--space-1);">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:var(--space-2) var(--space-3);border:1px solid var(--gray-200);border-radius:var(--radius-md);flex:1;justify-content:center;font-size:0.85rem;font-weight:500;transition:all 0.15s ease;" class="radio-btn">
+                <input type="radio" name="fcSoftware" value="yes" ${fcSW === 'yes' ? 'checked' : ''} style="accent-color:var(--navy);"> Yes
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:var(--space-2) var(--space-3);border:1px solid var(--gray-200);border-radius:var(--radius-md);flex:1;justify-content:center;font-size:0.85rem;font-weight:500;transition:all 0.15s ease;" class="radio-btn">
+                <input type="radio" name="fcSoftware" value="no" ${fcSW === 'no' ? 'checked' : ''} style="accent-color:var(--navy);"> No
+              </label>
+            </div>
+          </div>
+
+          <!-- Year One Renewal Cost (conditional) -->
+          <div class="form-group" id="renewalCostGroup">
+            <label class="form-label">Estimated Year One Renewal Cost</label>
+            <input class="form-input" type="text" id="pdRenewalCost" value="${renewalCost}" placeholder="Enter amount if future cost is Yes">
+            <div style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;">Required if hardware or software has future cost</div>
+          </div>
+
+          <!-- Custodian Code / Shipping / Notes -->
+          <div class="form-group">
+            <label class="form-label">Custodian Code / Shipping Location / Notes</label>
+            <textarea class="form-input" id="pdCustodianNotes" rows="3" placeholder="Enter custodian code, shipping location, or other notes" style="resize:vertical;">${custNotes}</textarea>
+          </div>
+
+          <!-- Full width save button -->
+          <div style="grid-column:1/-1;display:flex;justify-content:flex-end;gap:var(--space-2);padding-top:var(--space-2);border-top:1px solid var(--gray-100);">
+            <button type="submit" class="btn btn-primary" id="pdSaveBtn">
+              <i data-lucide="save"></i> Save Purchase Details
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+async function savePurchaseDetails(event, submissionId) {
+  event.preventDefault();
+  const btn = document.getElementById('pdSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;"></div> Saving...';
+
+  const payload = {
+    requestor_name: document.getElementById('pdRequestorName')?.value || '',
+    department: document.getElementById('pdDepartment')?.value || '',
+    accounting_line: document.getElementById('pdAccountingLine')?.value || '',
+    type_of_request: document.getElementById('pdTypeOfRequest')?.value || '',
+    future_cost_hardware: document.querySelector('input[name="fcHardware"]:checked')?.value || '',
+    future_cost_software: document.querySelector('input[name="fcSoftware"]:checked')?.value || '',
+    renewal_cost_year1: document.getElementById('pdRenewalCost')?.value || '',
+    custodian_code_shipping_notes: document.getElementById('pdCustodianNotes')?.value || '',
+  };
+
+  try {
+    const response = await fetch(`${API_BASE}/api/submissions/${submissionId}/details`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to save');
+    showToast('success', 'Saved', 'Purchase details saved successfully.');
+    btn.innerHTML = '<i data-lucide="check"></i> Saved';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+    lucide.createIcons({ nodes: [btn] });
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="save"></i> Save Purchase Details';
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary');
+      lucide.createIcons({ nodes: [btn] });
+    }, 2000);
+  } catch (err) {
+    showToast('error', 'Error', 'Failed to save purchase details. Please try again.');
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="save"></i> Save Purchase Details';
+    lucide.createIcons({ nodes: [btn] });
+  }
 }
 
 function renderRequiredFormsPanel(forms) {
@@ -2712,7 +2864,14 @@ function renderExtractedFields(extracted) {
     subtotal: 'Subtotal',
   };
 
-  return Object.entries(extracted).map(([key, data]) => {
+  // Skip fields that are in the Purchase Details form (user-entered, not AI-extracted)
+  const purchaseDetailFields = new Set([
+    'accounting_line', 'type_of_request', 'future_cost_hardware',
+    'future_cost_software', 'renewal_cost_year1', 'custodian_code_shipping_notes',
+    'insurance_mentioned'  // internal boolean, not user-facing
+  ]);
+
+  return Object.entries(extracted).filter(([key]) => !purchaseDetailFields.has(key)).map(([key, data]) => {
     const value = typeof data === 'object' ? (data.value || '') : data;
     const confidence = typeof data === 'object' ? (data.confidence || 'medium') : 'medium';
     const confClass = confidence === 'high' ? 'high' : (confidence === 'low' ? 'low' : 'high');
@@ -2839,7 +2998,7 @@ async function renderSubmissions() {
               <th class="sortable-th" onclick="sortSubmissions('uploaded_at')" style="cursor:pointer;">Date <span id="sort_uploaded_at" class="sort-arrow">↕</span></th>
               <th class="sortable-th" onclick="sortSubmissions('vendor_name')" style="cursor:pointer;">Vendor <span id="sort_vendor_name" class="sort-arrow">↕</span></th>
               <th class="sortable-th" onclick="sortSubmissions('total_amount')" style="cursor:pointer;">Amount <span id="sort_total_amount" class="sort-arrow">↕</span></th>
-              <th>Description</th>
+              <th>Type</th>
               <th>Department</th>
               <th>Compliance</th>
               <th>Status</th>
@@ -2973,7 +3132,7 @@ function renderSubmissionsTable() {
           <div style="font-size:0.72rem;color:var(--gray-500);">${s.filename || ''}</div>
         </td>
         <td class="amount-cell" style="font-weight:600;">${formatCurrency(ed.total_amount)}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.82rem;color:var(--gray-600);" title="${(ed.scope_of_services || '').replace(/"/g, '&quot;')}">${ed.scope_of_services || '—'}</td>
+        <td style="font-size:0.82rem;"><span class="badge badge-navy" style="font-size:0.72rem;">${ed.type_of_request || '—'}</span></td>
         <td style="font-size:0.82rem;">${ed.department || '—'}</td>
         <td>${compBadge}</td>
         <td>
