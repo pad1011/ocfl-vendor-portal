@@ -1,0 +1,899 @@
+{
+  "submissions": {
+    "demo-001": {
+      "submission_id": "demo-001",
+      "filename": "dell_technologies_quote.pdf",
+      "saved_as": "demo-001.pdf",
+      "uploaded_at": "2026-03-10T21:15:40.892266",
+      "updated_at": "2026-03-10T21:15:40.892266",
+      "status": "approved",
+      "extracted_data": {
+        "vendor_name": "Dell Technologies",
+        "vendor_number": "",
+        "contract_number": "OCFL-001",
+        "requisition_number": "REQ-2026-001",
+        "date_submitted": "2026-03-10",
+        "requestor_name": "Paul Dumont",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 47500.0,
+        "contract_type": "cooperative",
+        "scope_of_services": "PowerEdge R760 Server with 256GB RAM",
+        "insurance_mentioned": false,
+        "expiration_date": "2026-06-15",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-3460",
+        "type_of_request": "Hardware",
+        "future_cost_hardware": "yes",
+        "future_cost_software": "no",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $47,500.00 - Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+          }
+        ],
+        "threshold_category": "informal_quotes",
+        "board_approval_required": false,
+        "procurement_method": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor_plus_procurement",
+        "reason": "$47,500.00 dept quoting",
+        "threshold_category": "department_quotes",
+        "required_approvals": [
+          "Division Supervisor",
+          "Procurement Analyst"
+        ],
+        "estimated_lead_time": "3-5 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-03-10T21:15:40.892266",
+          "actor": "system",
+          "description": "Document uploaded. Total $47,500.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-03-10T21:15:45.892266",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-03-10T21:15:50.892266",
+          "actor": "system",
+          "description": "Routed to: Supervisor Plus Procurement.",
+          "metadata": {}
+        },
+        {
+          "event_type": "status_change",
+          "timestamp": "2026-03-11T01:15:40.892266",
+          "actor": "user",
+          "description": "Status changed to approved.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-002": {
+      "submission_id": "demo-002",
+      "filename": "cdw-g_quote.pdf",
+      "saved_as": "demo-002.pdf",
+      "uploaded_at": "2026-03-13T21:15:40.892332",
+      "updated_at": "2026-03-13T21:15:40.892332",
+      "status": "pending_review",
+      "extracted_data": {
+        "vendor_name": "CDW-G",
+        "vendor_number": "",
+        "contract_number": "OCFL-002",
+        "requisition_number": "REQ-2026-002",
+        "date_submitted": "2026-03-13",
+        "requestor_name": "Paul Dumont",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 12800.0,
+        "contract_type": "piggyback",
+        "scope_of_services": "Cisco Catalyst 9200 switches (qty 4)",
+        "insurance_mentioned": false,
+        "expiration_date": "2026-04-10",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-3460",
+        "type_of_request": "Hardware",
+        "future_cost_hardware": "yes",
+        "future_cost_software": "no",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $12,800.00 - Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+          }
+        ],
+        "threshold_category": "informal_quotes",
+        "board_approval_required": false,
+        "procurement_method": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor_plus_procurement",
+        "reason": "$12,800.00 dept quoting",
+        "threshold_category": "department_quotes",
+        "required_approvals": [
+          "Division Supervisor",
+          "Procurement Analyst"
+        ],
+        "estimated_lead_time": "3-5 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-03-13T21:15:40.892332",
+          "actor": "system",
+          "description": "Document uploaded. Total $12,800.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-03-13T21:15:45.892332",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-03-13T21:15:50.892332",
+          "actor": "system",
+          "description": "Routed to: Supervisor Plus Procurement.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-003": {
+      "submission_id": "demo-003",
+      "filename": "microsoft_quote.pdf",
+      "saved_as": "demo-003.pdf",
+      "uploaded_at": "2026-03-05T21:15:40.892396",
+      "updated_at": "2026-03-05T21:15:40.892396",
+      "status": "in_review",
+      "extracted_data": {
+        "vendor_name": "Microsoft",
+        "vendor_number": "",
+        "contract_number": "OCFL-003",
+        "requisition_number": "REQ-2026-003",
+        "date_submitted": "2026-03-05",
+        "requestor_name": "Paul Dumont",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 285000.0,
+        "contract_type": "state_contract",
+        "scope_of_services": "Enterprise Agreement renewal - MS365 G5 licenses (500 seats)",
+        "insurance_mentioned": false,
+        "expiration_date": "2027-03-31",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-4620",
+        "type_of_request": "Software/Licensing",
+        "future_cost_hardware": "no",
+        "future_cost_software": "yes",
+        "renewal_cost_year1": "57000",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $285,000.00 - Formal Sealed Solicitation (IFB/RFP) by Procurement Division",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Formal Sealed Solicitation (IFB/RFP) by Procurement Division"
+          }
+        ],
+        "threshold_category": "formal_solicitation",
+        "board_approval_required": false,
+        "procurement_method": "Formal Sealed Solicitation (IFB/RFP) by Procurement Division"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "procurement_formal",
+        "reason": "$285,000.00 formal solicitation",
+        "threshold_category": "formal_solicitation",
+        "required_approvals": [
+          "Division Manager",
+          "Department Director",
+          "Procurement Manager"
+        ],
+        "estimated_lead_time": "6-8 weeks"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-03-05T21:15:40.892396",
+          "actor": "system",
+          "description": "Document uploaded. Total $285,000.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-03-05T21:15:45.892396",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-03-05T21:15:50.892396",
+          "actor": "system",
+          "description": "Routed to: Procurement Formal.",
+          "metadata": {}
+        },
+        {
+          "event_type": "status_change",
+          "timestamp": "2026-03-06T01:15:40.892396",
+          "actor": "user",
+          "description": "Status changed to in review.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-004": {
+      "submission_id": "demo-004",
+      "filename": "accenture_federal_services_quote.pdf",
+      "saved_as": "demo-004.pdf",
+      "uploaded_at": "2026-03-14T21:15:40.892425",
+      "updated_at": "2026-03-14T21:15:40.892425",
+      "status": "pending_review",
+      "extracted_data": {
+        "vendor_name": "Accenture Federal Services",
+        "vendor_number": "",
+        "contract_number": "",
+        "requisition_number": "REQ-2026-004",
+        "date_submitted": "2026-03-14",
+        "requestor_name": "Maria Santos",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 650000.0,
+        "contract_type": "standard",
+        "scope_of_services": "Cloud migration consulting services - phase 2",
+        "insurance_mentioned": false,
+        "expiration_date": "",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-3140",
+        "type_of_request": "Contract Labor",
+        "future_cost_hardware": "no",
+        "future_cost_software": "no",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $650,000.00 - Formal Sealed Solicitation (IFB/RFP) by Procurement Division",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Formal Sealed Solicitation (IFB/RFP) by Procurement Division"
+          },
+          {
+            "rule_id": "THRESHOLD-002",
+            "severity": "critical",
+            "message": "Amount $650,000.00 exceeds $500,000. BCC approval required.",
+            "section_reference": "Section 2",
+            "suggested_action": "Submit for BCC approval."
+          }
+        ],
+        "threshold_category": "formal_solicitation",
+        "board_approval_required": true,
+        "procurement_method": "Formal Sealed Solicitation (IFB/RFP) by Procurement Division"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "bcc",
+        "reason": "$650,000.00 BCC approval required",
+        "threshold_category": "bcc_approval",
+        "required_approvals": [
+          "Division Manager",
+          "Department Director",
+          "Procurement Division",
+          "County Administrator",
+          "BCC"
+        ],
+        "estimated_lead_time": "10-12 weeks"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-03-14T21:15:40.892425",
+          "actor": "system",
+          "description": "Document uploaded. Total $650,000.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-03-14T21:15:45.892425",
+          "actor": "system",
+          "description": "Compliance check: 1 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-03-14T21:15:50.892425",
+          "actor": "system",
+          "description": "Routed to: Bcc.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-005": {
+      "submission_id": "demo-005",
+      "filename": "dell_technologies_quote.pdf",
+      "saved_as": "demo-005.pdf",
+      "uploaded_at": "2026-02-28T21:15:40.892450",
+      "updated_at": "2026-02-28T21:15:40.892450",
+      "status": "approved",
+      "extracted_data": {
+        "vendor_name": "Dell Technologies",
+        "vendor_number": "",
+        "contract_number": "OCFL-005",
+        "requisition_number": "REQ-2026-005",
+        "date_submitted": "2026-02-28",
+        "requestor_name": "James Wilson",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 8500.0,
+        "contract_type": "cooperative",
+        "scope_of_services": "Dell UltraSharp monitors (qty 10)",
+        "insurance_mentioned": false,
+        "expiration_date": "",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-3460",
+        "type_of_request": "Hardware",
+        "future_cost_hardware": "yes",
+        "future_cost_software": "no",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $8,500.00 - P-Card or Single Quotation",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "P-Card or Single Quotation"
+          }
+        ],
+        "threshold_category": "small_purchase",
+        "board_approval_required": false,
+        "procurement_method": "P-Card or Single Quotation"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor",
+        "reason": "$8,500.00 within small purchase",
+        "threshold_category": "small_purchase",
+        "required_approvals": [
+          "Division Supervisor"
+        ],
+        "estimated_lead_time": "1-2 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-02-28T21:15:40.892450",
+          "actor": "system",
+          "description": "Document uploaded. Total $8,500.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-02-28T21:15:45.892450",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-02-28T21:15:50.892450",
+          "actor": "system",
+          "description": "Routed to: Supervisor.",
+          "metadata": {}
+        },
+        {
+          "event_type": "status_change",
+          "timestamp": "2026-03-01T01:15:40.892450",
+          "actor": "user",
+          "description": "Status changed to approved.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-006": {
+      "submission_id": "demo-006",
+      "filename": "shi_international_quote.pdf",
+      "saved_as": "demo-006.pdf",
+      "uploaded_at": "2026-02-13T21:15:40.892474",
+      "updated_at": "2026-02-13T21:15:40.892474",
+      "status": "approved",
+      "extracted_data": {
+        "vendor_name": "SHI International",
+        "vendor_number": "",
+        "contract_number": "OCFL-006",
+        "requisition_number": "REQ-2026-006",
+        "date_submitted": "2026-02-13",
+        "requestor_name": "Paul Dumont",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 34200.0,
+        "contract_type": "piggyback",
+        "scope_of_services": "VMware vSphere Enterprise Plus renewal",
+        "insurance_mentioned": false,
+        "expiration_date": "2026-05-01",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-4620",
+        "type_of_request": "Software/Licensing",
+        "future_cost_hardware": "no",
+        "future_cost_software": "yes",
+        "renewal_cost_year1": "6840",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $34,200.00 - Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+          }
+        ],
+        "threshold_category": "informal_quotes",
+        "board_approval_required": false,
+        "procurement_method": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor_plus_procurement",
+        "reason": "$34,200.00 dept quoting",
+        "threshold_category": "department_quotes",
+        "required_approvals": [
+          "Division Supervisor",
+          "Procurement Analyst"
+        ],
+        "estimated_lead_time": "3-5 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-02-13T21:15:40.892474",
+          "actor": "system",
+          "description": "Document uploaded. Total $34,200.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-02-13T21:15:45.892474",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-02-13T21:15:50.892474",
+          "actor": "system",
+          "description": "Routed to: Supervisor Plus Procurement.",
+          "metadata": {}
+        },
+        {
+          "event_type": "status_change",
+          "timestamp": "2026-02-14T01:15:40.892474",
+          "actor": "user",
+          "description": "Status changed to approved.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-007": {
+      "submission_id": "demo-007",
+      "filename": "cdw-g_quote.pdf",
+      "saved_as": "demo-007.pdf",
+      "uploaded_at": "2026-01-29T21:15:40.892499",
+      "updated_at": "2026-01-29T21:15:40.892499",
+      "status": "completed",
+      "extracted_data": {
+        "vendor_name": "CDW-G",
+        "vendor_number": "",
+        "contract_number": "OCFL-007",
+        "requisition_number": "REQ-2026-007",
+        "date_submitted": "2026-01-29",
+        "requestor_name": "Robert Chen",
+        "requestor_phone": "407-836-5000",
+        "department": "Public Works",
+        "line_items": [],
+        "total_amount": 5200.0,
+        "contract_type": "cooperative",
+        "scope_of_services": "Aruba wireless access points (qty 8)",
+        "insurance_mentioned": false,
+        "expiration_date": "",
+        "funding_type": "standard",
+        "accounting_line": "2001-541-3460",
+        "type_of_request": "Hardware",
+        "future_cost_hardware": "yes",
+        "future_cost_software": "no",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "Public Works - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $5,200.00 - P-Card or Single Quotation",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "P-Card or Single Quotation"
+          }
+        ],
+        "threshold_category": "small_purchase",
+        "board_approval_required": false,
+        "procurement_method": "P-Card or Single Quotation"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor",
+        "reason": "$5,200.00 within small purchase",
+        "threshold_category": "small_purchase",
+        "required_approvals": [
+          "Division Supervisor"
+        ],
+        "estimated_lead_time": "1-2 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-01-29T21:15:40.892499",
+          "actor": "system",
+          "description": "Document uploaded. Total $5,200.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-01-29T21:15:45.892499",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-01-29T21:15:50.892499",
+          "actor": "system",
+          "description": "Routed to: Supervisor.",
+          "metadata": {}
+        },
+        {
+          "event_type": "status_change",
+          "timestamp": "2026-01-30T01:15:40.892499",
+          "actor": "user",
+          "description": "Status changed to completed.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-008": {
+      "submission_id": "demo-008",
+      "filename": "insight_direct_quote.pdf",
+      "saved_as": "demo-008.pdf",
+      "uploaded_at": "2026-03-12T21:15:40.892522",
+      "updated_at": "2026-03-12T21:15:40.892522",
+      "status": "in_review",
+      "extracted_data": {
+        "vendor_name": "Insight Direct",
+        "vendor_number": "",
+        "contract_number": "OCFL-008",
+        "requisition_number": "REQ-2026-008",
+        "date_submitted": "2026-03-12",
+        "requestor_name": "Paul Dumont",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 92000.0,
+        "contract_type": "state_contract",
+        "scope_of_services": "Cisco Firepower NGFW appliances (qty 2)",
+        "insurance_mentioned": false,
+        "expiration_date": "2026-12-31",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-3460",
+        "type_of_request": "Hardware",
+        "future_cost_hardware": "yes",
+        "future_cost_software": "no",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $92,000.00 - Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+          }
+        ],
+        "threshold_category": "informal_quotes",
+        "board_approval_required": false,
+        "procurement_method": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor_plus_procurement",
+        "reason": "$92,000.00 dept quoting",
+        "threshold_category": "department_quotes",
+        "required_approvals": [
+          "Division Supervisor",
+          "Procurement Analyst"
+        ],
+        "estimated_lead_time": "3-5 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-03-12T21:15:40.892522",
+          "actor": "system",
+          "description": "Document uploaded. Total $92,000.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-03-12T21:15:45.892522",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-03-12T21:15:50.892522",
+          "actor": "system",
+          "description": "Routed to: Supervisor Plus Procurement.",
+          "metadata": {}
+        },
+        {
+          "event_type": "status_change",
+          "timestamp": "2026-03-13T01:15:40.892522",
+          "actor": "user",
+          "description": "Status changed to in review.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-009": {
+      "submission_id": "demo-009",
+      "filename": "gartner_quote.pdf",
+      "saved_as": "demo-009.pdf",
+      "uploaded_at": "2026-03-08T21:15:40.892544",
+      "updated_at": "2026-03-08T21:15:40.892544",
+      "status": "pending_review",
+      "extracted_data": {
+        "vendor_name": "Gartner",
+        "vendor_number": "",
+        "contract_number": "OCFL-009",
+        "requisition_number": "REQ-2026-009",
+        "date_submitted": "2026-03-08",
+        "requestor_name": "Maria Santos",
+        "requestor_phone": "407-836-5000",
+        "department": "ISS",
+        "line_items": [],
+        "total_amount": 75000.0,
+        "contract_type": "sole_source",
+        "scope_of_services": "IT research advisory services annual subscription",
+        "insurance_mentioned": false,
+        "expiration_date": "2026-03-30",
+        "funding_type": "standard",
+        "accounting_line": "1001-561-3140",
+        "type_of_request": "Software/Licensing",
+        "future_cost_hardware": "no",
+        "future_cost_software": "yes",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "ISS - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $75,000.00 - Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+          },
+          {
+            "rule_id": "DOC-001",
+            "severity": "critical",
+            "message": "Sole Source requires Exhibit 2.",
+            "section_reference": "Section 4",
+            "suggested_action": "Complete Exhibit 2."
+          }
+        ],
+        "threshold_category": "informal_quotes",
+        "board_approval_required": false,
+        "procurement_method": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor_plus_procurement",
+        "reason": "$75,000.00 dept quoting",
+        "threshold_category": "department_quotes",
+        "required_approvals": [
+          "Division Supervisor",
+          "Procurement Analyst"
+        ],
+        "estimated_lead_time": "3-5 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-03-08T21:15:40.892544",
+          "actor": "system",
+          "description": "Document uploaded. Total $75,000.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-03-08T21:15:45.892544",
+          "actor": "system",
+          "description": "Compliance check: 1 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-03-08T21:15:50.892544",
+          "actor": "system",
+          "description": "Routed to: Supervisor Plus Procurement.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    },
+    "demo-010": {
+      "submission_id": "demo-010",
+      "filename": "dell_technologies_quote.pdf",
+      "saved_as": "demo-010.pdf",
+      "uploaded_at": "2026-02-23T21:15:40.892563",
+      "updated_at": "2026-02-23T21:15:40.892563",
+      "status": "approved",
+      "extracted_data": {
+        "vendor_name": "Dell Technologies",
+        "vendor_number": "",
+        "contract_number": "OCFL-010",
+        "requisition_number": "REQ-2026-010",
+        "date_submitted": "2026-02-23",
+        "requestor_name": "Lisa Park",
+        "requestor_phone": "407-836-5000",
+        "department": "Planning",
+        "line_items": [],
+        "total_amount": 15800.0,
+        "contract_type": "cooperative",
+        "scope_of_services": "Dell Precision 7780 mobile workstations (qty 3)",
+        "insurance_mentioned": false,
+        "expiration_date": "",
+        "funding_type": "standard",
+        "accounting_line": "3001-512-3460",
+        "type_of_request": "Hardware",
+        "future_cost_hardware": "yes",
+        "future_cost_software": "no",
+        "renewal_cost_year1": "",
+        "custodian_code_shipping_notes": "Planning - Building 1, Rm 301"
+      },
+      "compliance": {
+        "issues": [
+          {
+            "rule_id": "THRESHOLD-001",
+            "severity": "info",
+            "message": "Total $15,800.00 - Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE",
+            "section_reference": "Exhibit 29",
+            "suggested_action": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+          }
+        ],
+        "threshold_category": "informal_quotes",
+        "board_approval_required": false,
+        "procurement_method": "Request for Quotations (RFQ) - min 3 written quotes, 1 M/WBE"
+      },
+      "required_forms": [],
+      "contract_matches": {},
+      "pricing_intelligence": {},
+      "approval_routing": {
+        "route_to": "supervisor_plus_procurement",
+        "reason": "$15,800.00 dept quoting",
+        "threshold_category": "department_quotes",
+        "required_approvals": [
+          "Division Supervisor",
+          "Procurement Analyst"
+        ],
+        "estimated_lead_time": "3-5 business days"
+      },
+      "duplicate_alerts": [],
+      "audit_trail": [
+        {
+          "event_type": "created",
+          "timestamp": "2026-02-23T21:15:40.892563",
+          "actor": "system",
+          "description": "Document uploaded. Total $15,800.00.",
+          "metadata": {}
+        },
+        {
+          "event_type": "compliance_check",
+          "timestamp": "2026-02-23T21:15:45.892563",
+          "actor": "system",
+          "description": "Compliance check: 0 critical, 0 warnings.",
+          "metadata": {}
+        },
+        {
+          "event_type": "routing",
+          "timestamp": "2026-02-23T21:15:50.892563",
+          "actor": "system",
+          "description": "Routed to: Supervisor Plus Procurement.",
+          "metadata": {}
+        },
+        {
+          "event_type": "status_change",
+          "timestamp": "2026-02-24T01:15:40.892563",
+          "actor": "user",
+          "description": "Status changed to approved.",
+          "metadata": {}
+        }
+      ],
+      "notes": []
+    }
+  }
+}
