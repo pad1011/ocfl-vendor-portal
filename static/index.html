@@ -2835,56 +2835,63 @@ function renderContractSources(sources) {
 
 function renderExhibitsList() {
   const exhibits = [
-    { num: 1, title: 'Purchase Requisition Form' },
-    { num: 2, title: 'Procurement Card (P-Card) Request' },
-    { num: 3, title: 'Sole Source/Single Source Justification' },
-    { num: 4, title: 'Emergency Purchase Justification' },
-    { num: 5, title: 'Vendor Registration Application' },
-    { num: 6, title: 'Insurance Requirements Checklist' },
-    { num: 7, title: 'Vendor Quote Summary Sheet' },
-    { num: 8, title: 'Bid Tabulation Form' },
-    { num: 9, title: 'Request for Quotation (RFQ) Template' },
-    { num: 10, title: 'Invitation for Bids (IFB) Template' },
-    { num: 11, title: 'Request for Proposals (RFP) Template' },
-    { num: 12, title: 'Evaluation Committee Scoring Sheet' },
-    { num: 13, title: 'Contract Routing Form' },
-    { num: 14, title: 'Contract Amendment Request' },
-    { num: 15, title: 'Contract Renewal Request' },
-    { num: 16, title: 'Piggyback Contract Justification' },
-    { num: 17, title: 'Cooperative Purchasing Agreement' },
-    { num: 18, title: 'Prevailing Wage Certification' },
-    { num: 19, title: 'Federal Funding Compliance Checklist' },
-    { num: 20, title: 'State Funding Compliance Checklist' },
-    { num: 21, title: 'DBE/MBE/WBE Participation Form' },
-    { num: 22, title: 'Conflict of Interest Disclosure' },
-    { num: 23, title: 'Non-Collusion Affidavit' },
-    { num: 24, title: 'Drug-Free Workplace Certification' },
-    { num: 25, title: 'Public Entity Crimes Statement' },
-    { num: 26, title: 'Lobbying Certification (Federal)' },
-    { num: 27, title: 'Debarment & Suspension Certificate' },
-    { num: 28, title: 'Vendor Performance Evaluation' },
-    { num: 29, title: 'Protest Procedures Notice' },
-    { num: 30, title: 'Blanket Purchase Order Request' },
-    { num: 31, title: 'Change Order Request Form' },
-    { num: 32, title: 'Payment Request / Invoice Approval' },
-    { num: 33, title: 'Receiving Report' },
-    { num: 34, title: 'Asset Tag Assignment Form' },
-    { num: 35, title: 'IT Purchase Review Form' },
-    { num: 36, title: 'Software License Tracking Sheet' },
-    { num: 37, title: 'Lease vs. Purchase Analysis' },
-    { num: 38, title: 'Surplus Property Declaration' },
-    { num: 39, title: 'Construction Services Pre-Qualification' },
-    { num: 40, title: 'Professional Services Selection (CCNA)' },
-    { num: 41, title: 'Grant-Funded Procurement Certification' },
-    { num: 42, title: 'Procurement File Closure Checklist' },
+    { num: 1, title: 'Emergency Procurement Justification' },
+    { num: 2, title: 'Sole Source Procurement Justification' },
+    { num: 3, title: 'Price Negotiation Memorandum' },
+    { num: 4, title: 'Term Contract Performance Evaluation' },
+    { num: 5, title: 'Construction Project Information Sheet' },
+    { num: 6, title: 'RFP Project Information Sheet — Professional Services' },
+    { num: 7, title: 'Performance Evaluation — Construction Contracts' },
+    { num: 8, title: 'Performance Evaluation — Professional Services' },
+    { num: 9, title: 'Report of Unsatisfactory Materials and/or Services' },
+    { num: 10, title: 'Sample Scope of Services / Scope of Work Formats' },
+    { num: 11, title: 'Change Order Request Form' },
+    { num: 12, title: 'Procurement Card Application' },
+    { num: 13, title: 'Travel Card Application' },
+    { num: 14, title: 'Procurement Card Termination Form' },
+    { num: 15, title: 'Travel Card Termination Form' },
+    { num: 16, title: 'Procurement Card Monthly Purchase Log' },
+    { num: 17, title: 'Travel Card Monthly Purchase Log' },
+    { num: 18, title: 'Notification of Lost or Stolen Procurement Card' },
+    { num: 19, title: 'Notification of Lost or Stolen Travel Card' },
+    { num: 20, title: 'Procurement Cardholder Agreement & Acknowledgement' },
+    { num: 21, title: 'Travel Cardholder Agreement & Acknowledgement' },
+    { num: 22, title: 'Procurement Card Representative Application' },
+    { num: 23, title: 'Travel Card Representative Application' },
+    { num: 24, title: 'Procurement Card Application for Name Change' },
+    { num: 25, title: 'Travel Card Application for Name Change' },
+    { num: 26, title: 'Procurement Card Exception Request' },
+    { num: 27, title: 'Protest Hearing Form' },
+    { num: 28, title: 'Format for Purchase Orders — Tear Downs and Quotes' },
+    { num: 29, title: 'Procurement Thresholds' },
+    { num: 30, title: 'Purchase Order/Contract Documentation of Exemption' },
+    { num: 31, title: 'Alternate Contract Source Approval Form' },
+    { num: 32, title: 'Piggyback Requisition Checklist' },
+    { num: 33, title: 'Short Form Request for Quotations' },
+    { num: 34, title: 'Project Information Sheet — Request for Solicitation or Contract' },
+    { num: 35, title: 'Solicitation, Contract and Change Order Independent Estimate' },
+    { num: 36, title: 'Federal Compliance Documentation Form' },
+    { num: 37, title: 'Guideline for Standard Orange County Procurement Thresholds' },
+    { num: 38, title: 'Guideline for Federal Funding Procurement Thresholds' },
+    { num: 39, title: 'Sample Emergency Field Purchase Order' },
+    { num: 40, title: 'Department Expediting Form with M/WBE' },
+    { num: 41, title: 'Direct Award to Orange County Certified M/WBE Recommendation' },
+    { num: 42, title: 'Request to Add a Sub-Consultant (800/900/Task Authorization)' },
   ];
 
-  return exhibits.map(e => `
-    <div class="exhibit-item">
-      <div class="exhibit-num">Exhibit ${e.num}</div>
-      <div class="exhibit-title">${e.title}</div>
-    </div>
-  `).join('');
+  return exhibits.map(e => {
+    const pad = String(e.num).padStart(2, '0');
+    return `
+    <a href="/static/exhibits/exhibit-${pad}.pdf" target="_blank" class="exhibit-item" style="text-decoration:none;color:inherit;cursor:pointer;transition:box-shadow 0.15s ease;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div class="exhibit-num">Exhibit ${e.num}</div>
+          <div class="exhibit-title">${e.title}</div>
+        </div>
+        <i data-lucide="download" style="width:16px;height:16px;color:var(--orange-500);flex-shrink:0;"></i>
+      </div>
+    </a>
+  `}).join('');
 }
 </script>
 </body>
